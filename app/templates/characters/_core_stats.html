@@ -1,6 +1,18 @@
 <section id="core-stats" class="sheet-section">
   <h2>Core Statistics</h2>
   <div class="stat-grid">
+    {# Health band for colouring the current value. Needs both numbers and a
+       positive max to mean anything; otherwise it stays unstyled. #}
+    {% set hp_state = "" %}
+    {% if character.hp_current is not none and character.hp_max is not none and character.hp_max > 0 %}
+      {% if character.hp_current > character.hp_max %}
+        {% set hp_state = "hp--over" %}
+      {% elif character.hp_current < character.hp_max * 0.25 %}
+        {% set hp_state = "hp--critical" %}
+      {% elif character.hp_current < character.hp_max * 0.5 %}
+        {% set hp_state = "hp--low" %}
+      {% endif %}
+    {% endif %}
     <div class="stat stat--hp">
       <span class="stat-label">HP</span>
       <div class="hp-adjust">
@@ -9,7 +21,7 @@
         <button type="button" class="btn-step" aria-label="Reduce current HP by 1"
                 hx-post="/characters/{{ character.id }}/hp/adjust" hx-vals='{"delta": -1}'
                 hx-target="#core-stats" hx-swap="outerHTML">&minus;</button>
-        <span class="stat-value">{{ character.hp_current if character.hp_current is not none else "—" }} / {{ character.hp_max if character.hp_max is not none else "—" }}</span>
+        <span class="stat-value"><span class="hp-current {{ hp_state }}">{{ character.hp_current if character.hp_current is not none else "—" }}</span> / {{ character.hp_max if character.hp_max is not none else "—" }}</span>
         <button type="button" class="btn-step" aria-label="Increase current HP by 1"
                 hx-post="/characters/{{ character.id }}/hp/adjust" hx-vals='{"delta": 1}'
                 hx-target="#core-stats" hx-swap="outerHTML">+</button>

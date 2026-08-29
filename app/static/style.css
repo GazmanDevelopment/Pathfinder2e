@@ -28,6 +28,11 @@
   --crimson-soft: #a94e4e;
   --crimson-wash: #f6e5e2;
 
+  /* Health bands — darkened to stay legible on the parchment ground */
+  --hp-over: #2f6b3a;
+  --hp-low: #b06510;
+  --hp-critical: #a82c22;
+
   /* Type */
   --font-display: "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;
   --font-body: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
@@ -379,6 +384,23 @@ a:hover {
   flex: 1 1 auto;
   text-align: center;
   min-width: 0;
+}
+
+/* Only the current value carries the health colour; the max stays ink. */
+.hp-current {
+  transition: color 0.15s ease;
+}
+
+.hp-current.hp--over {
+  color: var(--hp-over);
+}
+
+.hp-current.hp--low {
+  color: var(--hp-low);
+}
+
+.hp-current.hp--critical {
+  color: var(--hp-critical);
 }
 
 /* 44px minimum — the usual comfortable touch target. */
