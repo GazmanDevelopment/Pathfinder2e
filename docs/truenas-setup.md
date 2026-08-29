@@ -57,6 +57,13 @@ the most common way to get stuck:**
 The repo ships `authelia/` as **templates**. Real secrets and password hashes
 are generated on the box and are git-ignored — never commit them.
 
+If `docker` needs `sudo` on your box, do **not** put `sudo` in front of the
+`for` loop below — `sudo` runs a single program, it doesn't understand shell
+keywords like `for`/`do`, and `sudo for ...; do` fails with a shell parse
+error before `docker` is ever involved. Either drop `sudo` (try one `docker
+run ...` command first — if it works without it, your user's already in the
+`docker` group), or wrap the whole loop as one argument: `sudo sh -c '...'`.
+
 ```bash
 cd /mnt/<pool>/apps/pf2e-sheets/Pathfinder2e/authelia
 mkdir -p secrets
@@ -66,7 +73,17 @@ for s in jwt_secret session_secret storage_encryption_key oidc_hmac_secret; do
   docker run --rm authelia/authelia:4.38 authelia crypto rand --length 64 \
     | tail -1 > secrets/$s
 done
+```
 
+If that loop needs `sudo`, use this instead (same four secrets, no loop to
+fight with `sudo` over):
+```bash
+sudo sh -c 'for s in jwt_secret session_secret storage_encryption_key oidc_hmac_secret; do
+  docker run --rm authelia/authelia:4.38 authelia crypto rand --length 64 | tail -1 > secrets/$s
+done'
+```
+
+```bash
 # OIDC issuer signing key (RSA)
 docker run --rm -v "$PWD/secrets:/keys" authelia/authelia:4.38 \
   authelia crypto pair rsa generate --directory /keys
