@@ -137,7 +137,7 @@ from `.env`.
 >   sheet:
 >     image: pf2e-sheet:latest   # not "build: ."
 >     ports:
->       - "8000:8000"
+>       - "8101:8000"   # host:container — only the host side needs to change if 8000 is taken
 >     environment:
 >       DATABASE_URL: "sqlite:////data/sheet.db"
 >       UPLOAD_DIR: "/uploads"
@@ -171,7 +171,7 @@ from `.env`.
 4. `docker compose restart` and reload — you should still be signed in (the
    session cookie is signed with `SESSION_SECRET`) and your data intact
    (proves the three volumes are mounted).
-5. `http://<truenas-ip>:8000/healthz` still returns `{"status":"ok"}` without
+5. `http://<truenas-ip>:8101/healthz` still returns `{"status":"ok"}` without
    a login (it's intentionally open for the container healthcheck).
 
 Because real login now exists, it's safe to expose the app through the public
