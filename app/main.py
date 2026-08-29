@@ -10,10 +10,11 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.auth import NotAuthenticated, require_login
+from app.auth import NotAuthenticated, require_admin, require_login
 from app.config import SESSION_HTTPS_ONLY, SESSION_SECRET, UPLOAD_DIR
 from app.db import Base, engine
-from app.routers import auth, avatar, characters, equipment, features, notes, proficiencies, spells
+from app.deps import get_character_or_404
+from app.routers import admin, auth, avatar, characters, equipment, features, notes, proficiencies, spells
 from app.templating import templates
 
 if not SESSION_SECRET:
@@ -54,15 +55,28 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 # Auth routes are open; every sheet route requires a logged-in session. The
 # gating lives here so no individual router file has to know about auth.
 app.include_router(auth.router)
+app.include_router(admin.router, dependencies=[Depends(require_admin)])
 
-_protected = [Depends(require_login)]
-app.include_router(characters.router, dependencies=_protected)
-app.include_router(proficiencies.router, dependencies=_protected)
-app.include_router(spells.router, dependencies=_protected)
-app.include_router(equipment.router, dependencies=_protected)
-app.include_router(features.router, dependencies=_protected)
-app.include_router(notes.router, dependencies=_protected)
-app.include_router(avatar.router, dependencies=_protected)
+# characters.router's per-character routes already inject get_character_or_404
+# individually (for the Character object), so it isn't repeated here — doing
+# so would break characters.router's list/create routes, which have no
+# character_id in their path for the dependency to resolve.
+app.include_router(characters.router, dependencies=[Depends(require_login)])
+
+# The other six routers are entirely prefixed under /characters/{character_id}/...,
+# so get_character_or_404 is added as a bare guard here: it's the only thing
+# enforcing ownership on their per-item routes (edit/save/delete an existing
+# row), which use a local helper that checks the item belongs to the character
+# but never re-checks that the character belongs to the caller. FastAPI caches
+# a dependency's result per request, so routes that also inject it directly
+# (the new/POST create endpoints) don't pay for a second fetch.
+_owned = [Depends(require_login), Depends(get_character_or_404)]
+app.include_router(proficiencies.router, dependencies=_owned)
+app.include_router(spells.router, dependencies=_owned)
+app.include_router(equipment.router, dependencies=_owned)
+app.include_router(features.router, dependencies=_owned)
+app.include_router(notes.router, dependencies=_owned)
+app.include_router(avatar.router, dependencies=_owned)
 
 
 ERROR_HEADINGS = {

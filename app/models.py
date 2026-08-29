@@ -32,6 +32,7 @@ class Character(Base):
     __tablename__ = "characters"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
     ancestry: Mapped[str | None] = mapped_column(String, nullable=True)
     character_class: Mapped[str | None] = mapped_column("class", String, nullable=True)
@@ -69,6 +70,7 @@ class Character(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 
+    owner: Mapped["User"] = relationship()
     proficiencies: Mapped[list["Proficiency"]] = relationship(
         back_populates="character", cascade="all, delete-orphan", order_by="Proficiency.id"
     )

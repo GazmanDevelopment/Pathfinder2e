@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
-from app.auth import oauth, resolve_email, session_payload, upsert_user
+from app.auth import oauth, resolve_email, resolve_login_user, session_payload
 from app.config import APP_BASE_URL, configured_providers
 from app.db import get_db
 from app.templating import templates
@@ -73,12 +73,18 @@ async def auth_callback(provider: str, request: Request, db: Session = Depends(g
             status_code=303,
         )
 
-    user = upsert_user(
+    user = resolve_login_user(
         db,
         email=email,
         display_name=claims.get("name") or claims.get("preferred_username") or email,
         auth_source=provider,
     )
+    if user is None:
+        return RedirectResponse(
+            url="/login?" + urlencode({"error": "Your account isn't registered for this table. Ask an admin to add you."}),
+            status_code=303,
+        )
+
     request.session["user"] = session_payload(user)
     target = request.session.pop("post_login_next", "/characters")
     return RedirectResponse(url=target, status_code=303)

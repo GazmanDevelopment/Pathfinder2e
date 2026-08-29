@@ -4,6 +4,9 @@
   <span class="item-field">{{ character.ancestry or "" }}</span>
   <span class="item-field">{{ character.character_class or "" }}</span>
   <span class="item-field">{{ "Level " ~ character.level if character.level is not none else "" }}</span>
+  {% if is_admin_view %}
+    <span class="tag owner-tag">{{ character.owner.display_name or character.owner.email }}</span>
+  {% endif %}
   <span class="item-actions">
     <button type="button" class="btn btn--danger" hx-delete="/characters/{{ character.id }}"
             hx-target="#character-row-{{ character.id }}" hx-swap="outerHTML"

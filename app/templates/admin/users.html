@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Admin — Users{% endblock %}
+
+{% block content %}
+  <h1>Users</h1>
+
+  {% if added == "added" %}
+    <p class="form-success">Added — they can sign in now.</p>
+  {% elif added == "already-registered" %}
+    <p class="form-success">That email is already registered.</p>
+  {% endif %}
+
+  <form method="post" action="/admin/users" class="create-character-form">
+    <input type="email" name="email" placeholder="player@example.com" required>
+    <button type="submit" class="btn btn--primary">Add allowed email</button>
+  </form>
+
+  <ul id="user-list" class="item-list">
+    {% for user in users %}
+      <li class="item-row admin-user-row">
+        <span class="item-field item-field--name">{{ user.email }}</span>
+        <span class="item-field">{{ user.display_name or "(pending — never logged in)" }}</span>
+        <span class="item-field">
+          <span class="tag">{{ user.role }}</span>
+          {% if user.auth_source %}<span class="tag">{{ user.auth_source }}</span>{% endif %}
+        </span>
+      </li>
+    {% else %}
+      <li>No users yet.</li>
+    {% endfor %}
+  </ul>
+{% endblock %}

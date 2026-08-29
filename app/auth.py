@@ -1,5 +1,5 @@
 from authlib.integrations.starlette_client import OAuth
-from fastapi import Request
+from fastapi import HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.config import configured_providers
@@ -35,6 +35,16 @@ def require_login(request: Request) -> dict:
     return user
 
 
+def require_admin(request: Request) -> dict:
+    """Dependency guarding /admin/*. No session -> same redirect-to-login as
+    require_login; a logged-in non-admin gets a plain 403 (already rendered
+    as a themed page by the global HTTPException handler)."""
+    user = require_login(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Admins only.")
+    return user
+
+
 def resolve_email(claims: dict) -> str | None:
     """Pull a login email out of an id_token's claims, normalised to lowercase.
 
@@ -51,23 +61,38 @@ def resolve_email(claims: dict) -> str | None:
     return None
 
 
-def upsert_user(db: Session, *, email: str, display_name: str | None, auth_source: str) -> User:
-    """Find the user by verified email, or create them.
+def resolve_login_user(db: Session, *, email: str, display_name: str | None, auth_source: str) -> User | None:
+    """Resolve a successful OIDC login to a users row, enforcing the allow-list.
 
     Every provider callback funnels through here, so the Entra and Authelia
     paths converge on one users row per email. `email` is expected already
     normalised (see resolve_email).
+
+    Access is gated: only a *pre-registered* email (a row already present in
+    `users`, added via /admin/users) can log in — this function never
+    auto-creates a row for an unrecognised email. The one exception is the
+    very first login ever, which bootstraps the admin account, since
+    otherwise nobody could ever add themselves to an empty allow-list.
+
+    Returns None when the email isn't registered — the caller must treat
+    that as a rejected login, not create a session.
     """
+    if db.query(User).count() == 0:
+        user = User(email=email, display_name=display_name, auth_source=auth_source, role="admin")
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        return user
+
     user = db.query(User).filter(User.email == email).one_or_none()
     if user is None:
-        user = User(email=email, display_name=display_name, auth_source=auth_source)
-        db.add(user)
-    else:
-        # Keep the display name and most-recent source fresh, but never
-        # overwrite the row's identity (email) or role.
-        if display_name:
-            user.display_name = display_name
-        user.auth_source = auth_source
+        return None
+
+    # Keep the display name and most-recent source fresh, but never
+    # overwrite the row's identity (email) or role.
+    if display_name:
+        user.display_name = display_name
+    user.auth_source = auth_source
     db.commit()
     db.refresh(user)
     return user

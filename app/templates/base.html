@@ -14,6 +14,9 @@
   {% set current_user = request.session.get("user") %}
   <nav class="site-nav">
     <a href="/characters">Characters</a>
+    {% if current_user and current_user.role == "admin" %}
+      <a href="/admin/users">Admin</a>
+    {% endif %}
     {% if current_user %}
       <span class="nav-user">
         <span class="nav-user__name">{{ current_user.display_name or current_user.email }}</span>
