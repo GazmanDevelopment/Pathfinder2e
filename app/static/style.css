@@ -377,11 +377,46 @@ a:hover {
 
 /* --- Admin: users -------------------------------------------------------- */
 
+.admin-filter-tabs {
+  display: flex;
+  gap: 1rem;
+  margin: 1.25rem 0 0.75rem;
+  border-bottom: 1px solid var(--gold-pale);
+}
+
+.admin-filter-tabs a {
+  padding: 0.4rem 0.1rem;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--ink-faint);
+  border-bottom: 2px solid transparent;
+}
+.admin-filter-tabs a:hover {
+  color: var(--ink);
+}
+.admin-filter-tabs a.is-active {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+}
+
 .admin-user-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.2fr) auto;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.2fr) auto;
   align-items: center;
   gap: 0.75rem;
+}
+
+.inline-form {
+  display: inline-block;
+  margin: 0;
+}
+
+.admin-user-row .btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 /* --------------------------------------------------------------------------

@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
-from app.auth import NotAuthenticated, require_admin, require_login
+from app.auth import AccountDisabled, NotAuthenticated, require_admin, require_login
 from app.config import SESSION_HTTPS_ONLY, SESSION_SECRET, UPLOAD_DIR
 from app.db import Base, engine
 from app.deps import get_character_or_404
@@ -151,6 +151,21 @@ def not_authenticated_handler(request: Request, exc: NotAuthenticated):
         target = "/login?" + urlencode({"next": request.url.path})
         return RedirectResponse(url=target, status_code=303)
     return JSONResponse({"detail": "Not authenticated"}, status_code=401)
+
+
+@app.exception_handler(AccountDisabled)
+def account_disabled_handler(request: Request, exc: AccountDisabled):
+    """The session's account has since been disabled or deleted. require_login
+    already cleared the session; this just gets the client somewhere sane,
+    with a message distinct from the plain "please sign in" one."""
+    message = "This account has been disabled. Contact an admin."
+    if request.headers.get("HX-Request") == "true":
+        resp = Response(status_code=200)
+        resp.headers["HX-Redirect"] = "/login?" + urlencode({"error": message})
+        return resp
+    if "text/html" in request.headers.get("accept", ""):
+        return RedirectResponse(url="/login?" + urlencode({"error": message}), status_code=303)
+    return JSONResponse({"detail": message}, status_code=403)
 
 
 @app.exception_handler(Exception)

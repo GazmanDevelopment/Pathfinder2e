@@ -3,12 +3,25 @@
 {% block title %}Characters{% endblock %}
 
 {% block content %}
-  <h1>{{ "All Characters (Admin)" if is_admin_view else "Characters" }}</h1>
+  <h1>
+    {%- if viewing_owner %}
+      Characters — {{ viewing_owner.display_name or viewing_owner.email }}
+      {%- if viewing_owner.is_disabled %} (disabled){% endif %}
+    {%- elif is_admin_view %}
+      All Characters (Admin)
+    {%- else %}
+      Characters
+    {%- endif %}
+  </h1>
 
-  <form method="post" action="/characters" class="create-character-form">
-    <input type="text" name="name" placeholder="New character name" required>
-    <button type="submit" class="btn btn--primary">Create character</button>
-  </form>
+  {% if viewing_owner %}
+    <p><a href="/admin/users?filter={{ 'disabled' if viewing_owner.is_disabled else 'active' }}">&larr; Back to users</a></p>
+  {% else %}
+    <form method="post" action="/characters" class="create-character-form">
+      <input type="text" name="name" placeholder="New character name" required>
+      <button type="submit" class="btn btn--primary">Create character</button>
+    </form>
+  {% endif %}
 
   <ul id="character-list" class="item-list">
     {% for character in characters %}

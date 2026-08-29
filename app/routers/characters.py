@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, Form, Request
+from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import get_character_or_404
-from app.models import Character, Proficiency
+from app.models import Character, Proficiency, User
 from app.seed_data import DEFAULT_PROFICIENCY_NAMES
 from app.templating import templates
 
@@ -12,15 +12,36 @@ router = APIRouter(prefix="/characters", tags=["characters"])
 
 
 @router.get("")
-def list_characters(request: Request, db: Session = Depends(get_db)):
+def list_characters(request: Request, owner_id: int | None = None, db: Session = Depends(get_db)):
     user = request.session["user"]
+    is_admin = user["role"] == "admin"
     query = db.query(Character).order_by(Character.id)
-    if user["role"] != "admin":
+    viewing_owner = None
+
+    if not is_admin:
         query = query.filter(Character.user_id == user["id"])
+    elif owner_id is not None:
+        # Phase 4b: admin drilling into one (typically disabled) user's
+        # characters from /admin/users, e.g. to see what a departed player
+        # had before deciding whether to delete their account.
+        viewing_owner = db.get(User, owner_id)
+        if viewing_owner is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        query = query.filter(Character.user_id == owner_id)
+    else:
+        # Default admin view: a disabled user's characters aren't deleted or
+        # reassigned, just filtered out here — same as Phase 4b's users list.
+        query = query.join(User, Character.user_id == User.id).filter(User.is_disabled.is_(False))
+
     characters = query.all()
     return templates.TemplateResponse(
         "characters/list.html",
-        {"request": request, "characters": characters, "is_admin_view": user["role"] == "admin"},
+        {
+            "request": request,
+            "characters": characters,
+            "is_admin_view": is_admin and viewing_owner is None,
+            "viewing_owner": viewing_owner,
+        },
     )
 
 
