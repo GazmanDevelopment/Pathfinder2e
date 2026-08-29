@@ -28,7 +28,7 @@ button shows.
 ## 2. Get the repo onto the box and build there
 
 No registry, no build step on the dev machine — build the image directly on
-the TrueNAS box itself.
+the TrueNAS box itself, over SSH:
 
 ```bash
 cd /mnt/<pool>/apps/pf2e-sheets   # or wherever you keep app checkouts
@@ -38,8 +38,19 @@ cd Pathfinder2e && git pull                            # on later phases
 docker build -t pf2e-sheet:latest .
 ```
 
-`docker-compose.yml` points at `build: .`, so `docker compose build` does this
-same on-box build for you — the manual `docker build` is just a sanity check.
+**Which deployment method you use from here matters, and picking wrong is
+the most common way to get stuck:**
+
+- **§5's `docker compose up -d --build`** (recommended) runs *in this
+  checked-out directory* and reads `docker-compose.yml`'s `build: .` itself
+  — the manual `docker build` above is then just an optional sanity check,
+  since compose does its own build.
+- **The Apps UI "Custom App (YAML)"** only ever sees the YAML text you paste
+  into it — it has **no access to this git checkout**, so a pasted `build:
+  .` has no `Dockerfile` to find and fails with *"failed to read dockerfile:
+  open Dockerfile: no such file or directory."* If you're using this method,
+  the manual `docker build` above is **required**, not optional — see the
+  Apps UI box in §5.
 
 ## 3. Generate Authelia's secrets and users
 
@@ -111,9 +122,44 @@ docker compose up -d --build
 ```
 
 The compose file mounts `./data`, `./uploads`, and `./authelia` from the
-dataset. If you deploy via the Apps UI **Custom App (YAML)** instead, use
-absolute dataset paths for the volumes (e.g.
-`/mnt/<pool>/apps/pf2e-sheets/authelia:/config`) and set the same env there.
+dataset — this SSH/CLI method is **recommended**: `--build` rebuilds from
+your latest `git pull` every time, and the env vars above load automatically
+from `.env`.
+
+> **Using the Apps UI "Custom App (YAML)" instead?** It cannot build an
+> image — it only receives the YAML text, with no access to this git
+> checkout — so `build: .` fails there with *"open Dockerfile: no such file
+> or directory."* You must build manually over SSH first (§2's `docker
+> build -t pf2e-sheet:latest .`), then paste YAML that references the tag
+> instead of building:
+> ```yaml
+> services:
+>   sheet:
+>     image: pf2e-sheet:latest   # not "build: ."
+>     ports:
+>       - "8000:8000"
+>     environment:
+>       DATABASE_URL: "sqlite:////data/sheet.db"
+>       UPLOAD_DIR: "/uploads"
+>       SESSION_SECRET: "<same as .env above>"
+>       APP_BASE_URL: "https://sheet.example.com"
+>       OIDC_AUTHELIA_ISSUER: "https://auth.example.com"
+>       OIDC_AUTHELIA_CLIENT_ID: "pf2e-sheet"
+>       OIDC_AUTHELIA_CLIENT_SECRET: "<the PLAINTEXT client secret from step 3>"
+>     volumes:
+>       - /mnt/<pool>/apps/pf2e-sheets/data:/data
+>       - /mnt/<pool>/apps/pf2e-sheets/uploads:/uploads
+> ```
+> Authelia needs its own Custom App the same way, using `image:
+> authelia/authelia:4.38` (that one was never the problem — it's pulled from
+> Docker Hub, not built) with `/mnt/<pool>/apps/pf2e-sheets/authelia:/config`
+> mounted.
+>
+> **The rebuild workflow differs too**: after every `git pull`, re-run
+> `docker build -t pf2e-sheet:latest .` over SSH, then redeploy/restart the
+> Custom App from the UI so it picks up the new image — the Apps UI has no
+> equivalent of `--build`, it never rebuilds on its own. This is the
+> tradeoff for this method; the CLI path above doesn't have this extra step.
 
 ## 6. Enrol TOTP and verify
 
