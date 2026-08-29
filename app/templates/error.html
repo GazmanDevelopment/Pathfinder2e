@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}{{ status }} — Character Sheet{% endblock %}
+
+{% block content %}
+  <section class="sheet-section error-page">
+    <p class="error-code">{{ status }}</p>
+    <h1>{{ heading }}</h1>
+    <p class="error-detail">{{ detail }}</p>
+    <p><a class="btn btn--primary" href="/characters">Back to characters</a></p>
+  </section>
+{% endblock %}

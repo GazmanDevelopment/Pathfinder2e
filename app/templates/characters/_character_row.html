@@ -5,7 +5,7 @@
   <span class="item-field">{{ character.character_class or "" }}</span>
   <span class="item-field">{{ "Level " ~ character.level if character.level is not none else "" }}</span>
   <span class="item-actions">
-    <button type="button" hx-delete="/characters/{{ character.id }}"
+    <button type="button" class="btn btn--danger" hx-delete="/characters/{{ character.id }}"
             hx-target="#character-row-{{ character.id }}" hx-swap="outerHTML"
             hx-confirm="Delete {{ character.name }}? This removes everything on their sheet.">Delete</button>
   </span>

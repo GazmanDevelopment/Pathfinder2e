@@ -3,8 +3,12 @@
 {% block title %}{{ character.name }}{% endblock %}
 
 {% block content %}
-  {% include "characters/_avatar.html" %}
-  {% include "characters/_header.html" %}
+  {# Avatar and header render as one banner card, but stay separate HTMX
+     swap targets so each still updates independently. #}
+  <div class="character-banner">
+    {% include "characters/_avatar.html" %}
+    {% include "characters/_header.html" %}
+  </div>
   {% include "characters/_core_stats.html" %}
   {% include "characters/_ability_scores.html" %}
   {% include "proficiencies/_list.html" %}

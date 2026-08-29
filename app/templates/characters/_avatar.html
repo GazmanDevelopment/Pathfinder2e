@@ -1,13 +1,19 @@
 <section id="character-avatar" class="sheet-section sheet-section--avatar">
   {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
-  <img class="avatar-main" src="{{ '/uploads/' ~ character.avatar_path if character.avatar_path else '/static/avatar-placeholder.svg' }}" alt="">
   <form hx-post="/characters/{{ character.id }}/avatar" hx-target="#character-avatar" hx-swap="outerHTML"
         hx-encoding="multipart/form-data" class="avatar-upload-form">
-    <input type="file" name="file" accept="image/jpeg,image/png,image/webp" required>
-    <button type="submit">Upload avatar</button>
+    {# The portrait itself is the file picker; choosing a file submits straight
+       away, so there's no separate upload step. JS is already required here
+       (htmx drives the whole sheet). #}
+    <label class="avatar-picker" title="Choose a new portrait">
+      <img class="avatar-main" src="{{ '/uploads/' ~ character.avatar_path if character.avatar_path else '/static/avatar-placeholder.svg' }}" alt="">
+      <span class="avatar-picker__hint">{{ "Change portrait" if character.avatar_path else "Add portrait" }}</span>
+      <input type="file" name="file" accept="image/jpeg,image/png,image/webp" required
+             onchange="this.form.requestSubmit()">
+    </label>
   </form>
   {% if character.avatar_path %}
-    <button type="button" hx-delete="/characters/{{ character.id }}/avatar"
-            hx-target="#character-avatar" hx-swap="outerHTML" hx-confirm="Remove avatar?">Remove avatar</button>
+    <button type="button" class="btn btn--danger" hx-delete="/characters/{{ character.id }}/avatar"
+            hx-target="#character-avatar" hx-swap="outerHTML" hx-confirm="Remove avatar?">Remove</button>
   {% endif %}
 </section>

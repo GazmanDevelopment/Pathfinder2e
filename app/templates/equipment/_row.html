@@ -10,9 +10,9 @@
   </div>
   {% if item.notes %}<p class="item-effect">{{ item.notes }}</p>{% endif %}
   <div class="item-actions">
-    <button type="button" hx-get="/characters/{{ character_id }}/equipment/{{ item.id }}/edit"
+    <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/equipment/{{ item.id }}/edit"
             hx-target="#equipment-row-{{ item.id }}" hx-swap="outerHTML">Edit</button>
-    <button type="button" hx-delete="/characters/{{ character_id }}/equipment/{{ item.id }}"
+    <button type="button" class="btn btn--danger" hx-delete="/characters/{{ character_id }}/equipment/{{ item.id }}"
             hx-target="#equipment-row-{{ item.id }}" hx-swap="outerHTML" hx-confirm="Delete this item?">Delete</button>
   </div>
 </li>

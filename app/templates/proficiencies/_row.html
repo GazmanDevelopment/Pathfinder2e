@@ -3,9 +3,9 @@
   <span class="item-field">{{ prof.rank or "" }}</span>
   <span class="item-field">{{ prof.bonus if prof.bonus is not none else "" }}</span>
   <span class="item-actions">
-    <button type="button" hx-get="/characters/{{ character_id }}/proficiencies/{{ prof.id }}/edit"
+    <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/proficiencies/{{ prof.id }}/edit"
             hx-target="#proficiency-row-{{ prof.id }}" hx-swap="outerHTML">Edit</button>
-    <button type="button" hx-delete="/characters/{{ character_id }}/proficiencies/{{ prof.id }}"
+    <button type="button" class="btn btn--danger" hx-delete="/characters/{{ character_id }}/proficiencies/{{ prof.id }}"
             hx-target="#proficiency-row-{{ prof.id }}" hx-swap="outerHTML"
             hx-confirm="Delete this proficiency?">Delete</button>
   </span>

@@ -1,223 +1,882 @@
-body {
-  font-family: system-ui, sans-serif;
-  max-width: 60rem;
-  margin: 0 auto 3rem;
-  padding: 0 1rem;
-  color: #1a1a1a;
+/* ==========================================================================
+   Character Sheet — Phase 1a visual pass
+   Fantasy/tabletop look: warm parchment ground, deep ink, gold rules.
+   Single committed palette (no dark-mode variant by design).
+   ========================================================================== */
+
+:root {
+  /* Ground & surfaces */
+  --parchment: #f2e8d0;
+  --parchment-deep: #e6d8b8;
+  --surface: #fbf6e9;
+  --surface-sunken: #f0e6cd;
+  --surface-edit: #fdf8e4;
+
+  /* Ink */
+  --ink: #2b2119;
+  --ink-muted: #6d5b45;
+  --ink-faint: #9c8a70;
+
+  /* Gold / accent */
+  --gold: #a8823a;
+  --gold-bright: #c19a49;
+  --gold-pale: #ddc999;
+  --gold-wash: #f0e4c6;
+
+  /* Semantic */
+  --crimson: #8c2f2f;
+  --crimson-soft: #a94e4e;
+  --crimson-wash: #f6e5e2;
+
+  /* Health bands — darkened to stay legible on the parchment ground */
+  --hp-over: #2f6b3a;
+  --hp-low: #b06510;
+  --hp-critical: #a82c22;
+
+  /* Type */
+  --font-display: "Cinzel", "Trajan Pro", Georgia, "Times New Roman", serif;
+  --font-body: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+
+  /* Shape */
+  --radius: 4px;
+  --radius-lg: 6px;
+  --shadow-card: 0 1px 2px rgba(43, 33, 25, 0.06), 0 4px 12px rgba(43, 33, 25, 0.05);
+  --shadow-raised: 0 2px 4px rgba(43, 33, 25, 0.10), 0 8px 20px rgba(43, 33, 25, 0.08);
 }
+
+/* --------------------------------------------------------------------------
+   Base
+   -------------------------------------------------------------------------- */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink);
+  background-color: var(--parchment);
+  max-width: 64rem;
+  margin: 0 auto 4rem;
+  padding: 0 1.25rem;
+  position: relative;
+}
+
+/* Faint paper grain over the whole page. Pointer-events off so it never
+   intercepts a click; fixed so it doesn't scroll like a pattern would. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.28;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+}
+
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  color: var(--ink);
+  margin-top: 0;
+  letter-spacing: 0.02em;
+}
+
+h1 {
+  font-size: 1.9rem;
+  line-height: 1.2;
+  margin-bottom: 0.25rem;
+}
+
+h2 {
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--gold);
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--gold-pale);
+}
+
+a {
+  color: #7a5a2c;
+  text-decoration-color: var(--gold-pale);
+  text-underline-offset: 2px;
+}
+a:hover {
+  color: var(--ink);
+}
+
+/* --------------------------------------------------------------------------
+   Site nav
+   -------------------------------------------------------------------------- */
 
 .site-nav {
-  padding: 0.75rem 0;
-  border-bottom: 1px solid #ddd;
-  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.1rem 0 0.9rem;
+  margin-bottom: 1.75rem;
+  border-bottom: 2px solid var(--gold);
+  box-shadow: 0 1px 0 var(--gold-pale);
 }
+
 .site-nav a {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
   text-decoration: none;
-  color: #2255aa;
+  color: var(--gold);
   font-weight: 600;
 }
-
-h1, h2 {
-  margin-top: 0;
+.site-nav a:hover {
+  color: var(--ink);
 }
+
+/* --------------------------------------------------------------------------
+   Sheet sections (cards)
+   -------------------------------------------------------------------------- */
 
 .sheet-section {
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  padding: 1rem;
-  margin-bottom: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--gold-pale);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 1.25rem 1.4rem 1.4rem;
+  margin-bottom: 1.25rem;
 }
+
 .sheet-section--edit {
-  border-color: #2255aa;
-  background: #f5f8ff;
+  background: var(--surface-edit);
+  border-color: var(--gold);
+  box-shadow: var(--shadow-raised);
 }
+
+/* --- Character banner (avatar + header as one card) ---------------------- */
+
+/* The two children remain independent HTMX swap targets, so the card chrome
+   lives on the wrapper and is stripped from the sections inside it. */
+.character-banner {
+  display: flex;
+  align-items: stretch;
+  margin-bottom: 1.25rem;
+  background: linear-gradient(to bottom, var(--gold-wash), var(--surface) 75%);
+  border: 1px solid var(--gold-pale);
+  border-top: 3px solid var(--gold);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.character-banner > .sheet-section {
+  margin: 0;
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 .sheet-section--avatar {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
+  gap: 0.6rem;
+  flex: 0 0 auto;
+  padding: 1.25rem;
+  border-right: 1px solid var(--gold-pale);
 }
 
-.avatar-main {
-  width: 96px;
-  height: 96px;
-  object-fit: cover;
-  border-radius: 6px;
-  background: #eee;
-}
-.avatar-thumb {
-  width: 40px;
-  height: 40px;
-  object-fit: cover;
-  border-radius: 4px;
-  background: #eee;
-}
-.avatar-upload-form {
+#character-header {
   display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-.form-error {
-  color: #b00020;
-  width: 100%;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
-.header-summary, .header-details {
-  color: #555;
+.header-fields {
+  min-width: 0;
+}
+
+.header-summary {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  color: var(--ink-muted);
+  margin: 0 0 0.6rem;
+  letter-spacing: 0.04em;
+}
+
+.header-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1.25rem;
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--ink-muted);
 }
 .header-details span {
-  margin-right: 1rem;
+  white-space: nowrap;
 }
+
+/* --------------------------------------------------------------------------
+   Avatar
+   -------------------------------------------------------------------------- */
+
+.avatar-main {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+  border: 1px solid var(--gold);
+  padding: 4px;
+  box-shadow: inset 0 0 0 1px var(--surface), var(--shadow-card);
+  flex-shrink: 0;
+}
+
+.avatar-thumb {
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  background: var(--surface-sunken);
+  border: 1px solid var(--gold-pale);
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+/* The portrait doubles as the file picker; the real input is removed from
+   view but stays focusable for keyboard and screen-reader users. */
+.avatar-picker {
+  position: relative;
+  display: block;
+  cursor: pointer;
+  border-radius: var(--radius);
+}
+
+.avatar-picker input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  inset: auto auto 0 0;
+}
+
+.avatar-picker__hint {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 4px;
+  padding: 0.28rem 0.2rem;
+  font-family: var(--font-display);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-align: center;
+  color: #fffaf0;
+  background: rgba(43, 33, 25, 0.72);
+  border-radius: 0 0 2px 2px;
+  opacity: 0;
+  transition: opacity 0.14s ease;
+}
+
+.avatar-picker:hover .avatar-picker__hint,
+.avatar-picker input[type="file"]:focus-visible ~ .avatar-picker__hint {
+  opacity: 1;
+}
+
+.avatar-picker input[type="file"]:focus-visible ~ .avatar-main {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* No portrait yet — keep the invitation visible rather than hover-only. */
+.avatar-picker:has(img[src$=".svg"]) .avatar-picker__hint {
+  opacity: 1;
+}
+
+.form-error {
+  width: 100%;
+  margin: 0 0 0.5rem;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.9rem;
+  color: var(--crimson);
+  background: var(--crimson-wash);
+  border: 1px solid var(--crimson-soft);
+  border-left-width: 3px;
+  border-radius: var(--radius);
+}
+
+/* --------------------------------------------------------------------------
+   Stat blocks (core statistics, ability scores)
+   -------------------------------------------------------------------------- */
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
+  grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
+  gap: 0.7rem;
+  margin-bottom: 1rem;
 }
+
 .stat {
   display: flex;
   flex-direction: column;
   align-items: center;
-  border: 1px solid #eee;
-  border-radius: 4px;
-  padding: 0.5rem;
+  gap: 0.1rem;
+  padding: 0.6rem 0.4rem 0.7rem;
+  background: var(--surface-sunken);
+  border: 1px solid var(--gold-pale);
+  border-radius: var(--radius);
+  box-shadow: inset 0 0 0 1px rgba(251, 246, 233, 0.7);
+  text-align: center;
 }
+
 .stat-label {
-  font-size: 0.75rem;
-  color: #777;
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
+  color: var(--ink-faint);
 }
+
 .stat-value {
-  font-size: 1.25rem;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
   font-weight: 700;
+  line-height: 1.1;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
 }
+
 .stat-sub {
   font-size: 0.85rem;
-  color: #555;
+  font-weight: 600;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- HP with inline adjust ------------------------------------------------ */
+
+/* Needs room for two touch targets either side of the value. */
+.stat--hp {
+  grid-column: span 2;
+  padding-bottom: 0.5rem;
+}
+
+.hp-adjust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.hp-adjust .stat-value {
+  flex: 1 1 auto;
+  text-align: center;
+  min-width: 0;
+}
+
+/* Only the current value carries the health colour; the max stays ink. */
+.hp-current {
+  transition: color 0.15s ease;
+}
+
+.hp-current.hp--over {
+  color: var(--hp-over);
+}
+
+.hp-current.hp--low {
+  color: var(--hp-low);
+}
+
+.hp-current.hp--critical {
+  color: var(--hp-critical);
+}
+
+/* 44px minimum — the usual comfortable touch target. */
+.btn-step {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--gold-pale);
+  border-radius: var(--radius);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background-color 0.1s ease, border-color 0.1s ease, transform 0.06s ease;
+}
+
+.btn-step:hover {
+  background: var(--gold-wash);
+  border-color: var(--gold);
+}
+
+.btn-step:active {
+  background: var(--gold);
+  border-color: #8f6d2c;
+  color: #fffaf0;
+  transform: scale(0.94);
+}
+
+.btn-step:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   Forms
+   -------------------------------------------------------------------------- */
+
+input[type="text"],
+input[type="number"],
+textarea {
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--ink);
+  background: #fffdf6;
+  border: 1px solid var(--gold-pale);
+  border-radius: var(--radius);
+  padding: 0.4rem 0.55rem;
+  width: 100%;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(168, 130, 58, 0.16);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--ink-faint);
+  opacity: 1;
+}
+
+textarea {
+  min-height: 3.5rem;
+  resize: vertical;
+  margin-bottom: 0.6rem;
 }
 
 .field-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.7rem;
+  margin-bottom: 0.8rem;
 }
-.field-grid label {
+
+.field-grid > label {
   display: flex;
   flex-direction: column;
-  font-size: 0.8rem;
-  color: #555;
+  gap: 0.25rem;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
 }
-.field-grid input, .field-grid textarea {
-  font-size: 1rem;
-  padding: 0.3rem;
+
+/* The actions row should never be squeezed into a grid column. */
+.field-grid > .item-actions {
+  grid-column: 1 / -1;
+  margin-top: 0.2rem;
 }
+
 .ability-grid fieldset {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.6rem;
   align-items: flex-end;
-  border: 1px solid #eee;
-  border-radius: 4px;
+  margin: 0;
+  padding: 0.5rem 0.7rem 0.7rem;
+  background: var(--surface-sunken);
+  border: 1px solid var(--gold-pale);
+  border-radius: var(--radius);
 }
+
+.ability-grid legend {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold);
+  padding: 0 0.3rem;
+}
+
 .ability-grid fieldset label {
   display: flex;
   flex-direction: column;
-  font-size: 0.8rem;
-}
-.ability-grid fieldset input {
-  width: 4rem;
+  gap: 0.2rem;
+  font-family: var(--font-display);
+  font-size: 0.6rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
 }
 
-textarea {
-  width: 100%;
-  min-height: 3rem;
-  box-sizing: border-box;
-  margin-bottom: 0.5rem;
+.ability-grid fieldset input {
+  width: 4.2rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
 }
+
+.checkbox-field {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-display);
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-muted);
+  align-self: end;
+  padding-bottom: 0.45rem;
+}
+.checkbox-field input[type="checkbox"] {
+  width: auto;
+  accent-color: var(--gold);
+  transform: scale(1.15);
+}
+
+/* --------------------------------------------------------------------------
+   Buttons
+   -------------------------------------------------------------------------- */
+
+.btn {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.42rem 0.85rem;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+/* Primary — the committing action (Save, Add, Create, Upload) */
+.btn--primary {
+  background: linear-gradient(to bottom, var(--gold-bright), var(--gold));
+  border-color: #8f6d2c;
+  color: #fffaf0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.btn--primary:hover {
+  background: linear-gradient(to bottom, var(--gold), #927029);
+}
+
+/* Ghost — reversible actions (Edit, Cancel) */
+.btn--ghost {
+  background: var(--surface);
+  border-color: var(--gold-pale);
+  color: var(--ink-muted);
+}
+.btn--ghost:hover {
+  background: var(--gold-wash);
+  border-color: var(--gold);
+  color: var(--ink);
+}
+
+/* Danger — destructive (Delete, Remove) */
+.btn--danger {
+  background: transparent;
+  border-color: transparent;
+  color: var(--crimson-soft);
+}
+.btn--danger:hover {
+  background: var(--crimson-wash);
+  border-color: var(--crimson-soft);
+  color: var(--crimson);
+}
+
+/* Add-row trigger — a dashed invitation, not a solid control */
+.btn--add {
+  display: block;
+  width: 100%;
+  background: transparent;
+  border: 1px dashed var(--gold-pale);
+  color: var(--ink-faint);
+  padding: 0.55rem;
+  text-align: center;
+}
+.btn--add:hover {
+  border-color: var(--gold);
+  border-style: solid;
+  background: var(--gold-wash);
+  color: var(--gold);
+}
+
+.item-actions {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* --------------------------------------------------------------------------
+   Item lists (proficiencies, spells, equipment, features, notes, characters)
+   -------------------------------------------------------------------------- */
 
 .item-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
+
 .item-row {
-  border-bottom: 1px solid #eee;
-  padding: 0.5rem 0;
+  padding: 0.55rem 0.5rem;
+  border-bottom: 1px solid var(--parchment-deep);
+  border-radius: var(--radius);
+  transition: background-color 0.12s ease;
 }
+
+.item-row:hover {
+  background: var(--gold-wash);
+}
+
+/* Compact ledger rows: proficiencies (name / rank / bonus / actions) */
 .item-row--compact {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr auto;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr) 4.5rem auto;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
 }
-.item-row--compact input {
-  width: 100%;
-  box-sizing: border-box;
+
+.item-row--compact .item-field:nth-child(3) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--gold);
 }
+
+/* Card rows: spells, equipment, features, notes */
 .item-row--card {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
+  gap: 0.4rem;
+  padding: 0.8rem 0.7rem;
 }
+
+/* Edit mode — lift the row out of the list visually */
 .item-row--edit {
-  background: #f5f8ff;
-  padding: 0.5rem;
-  border-radius: 4px;
+  background: var(--surface-edit);
+  border: 1px solid var(--gold);
+  box-shadow: var(--shadow-raised);
+  padding: 0.9rem;
+  margin: 0.4rem 0;
 }
-.item-row--add button {
-  background: none;
-  border: 1px dashed #999;
-  color: #555;
-  width: 100%;
-  padding: 0.4rem;
-  cursor: pointer;
-  border-radius: 4px;
+.item-row--edit:hover {
+  background: var(--surface-edit);
+}
+
+.item-row--add {
+  border-bottom: none;
+  padding: 0.5rem 0;
+}
+.item-row--add:hover {
+  background: transparent;
 }
 
 .item-field--name {
   font-weight: 600;
+  color: var(--ink);
 }
+
+.item-field {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ink-muted);
+  font-size: 0.92rem;
+}
+
 .item-summary {
   display: flex;
   align-items: baseline;
-  gap: 0.5rem;
+  gap: 0.45rem;
   flex-wrap: wrap;
 }
-.item-effect {
-  color: #444;
-  margin: 0;
-  white-space: pre-wrap;
-}
-.tag {
-  background: #eef2fa;
-  border-radius: 3px;
-  padding: 0.1rem 0.4rem;
-  font-size: 0.8rem;
-  color: #333;
-}
-.item-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-.item-actions button {
-  cursor: pointer;
+
+.item-summary strong {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 600;
+  margin-right: 0.15rem;
 }
 
-.checkbox-field {
-  flex-direction: row !important;
-  align-items: center;
-  gap: 0.3rem;
+.item-effect {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.92rem;
+  white-space: pre-wrap;
+  padding-left: 0.1rem;
+  border-left: 2px solid var(--gold-pale);
+  padding-left: 0.7rem;
 }
+
+.tag {
+  display: inline-block;
+  background: var(--gold-wash);
+  border: 1px solid var(--gold-pale);
+  border-radius: 999px;
+  padding: 0.1rem 0.55rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   Error page
+   -------------------------------------------------------------------------- */
+
+.error-page {
+  text-align: center;
+  padding: 3rem 1.5rem;
+}
+
+.error-code {
+  font-family: var(--font-display);
+  font-size: 3.5rem;
+  line-height: 1;
+  color: var(--gold-pale);
+  margin: 0 0 0.5rem;
+}
+
+.error-detail {
+  color: var(--ink-muted);
+  margin-bottom: 1.75rem;
+}
+
+/* The action is a link, not a button element — give it button geometry. */
+.error-page a.btn {
+  display: inline-block;
+  text-decoration: none;
+}
+
+/* --------------------------------------------------------------------------
+   Character list page
+   -------------------------------------------------------------------------- */
 
 .create-character-form {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: 0.6rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.15rem;
+  background: var(--surface);
+  border: 1px solid var(--gold-pale);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  flex-wrap: wrap;
+}
+.create-character-form input[type="text"] {
+  flex: 1 1 14rem;
+  width: auto;
+}
+
+#character-list {
+  background: var(--surface);
+  border: 1px solid var(--gold-pale);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+  padding: 0.4rem 0.9rem;
+}
+
+#character-list > li:last-child {
+  border-bottom: none;
 }
 
 .character-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.9rem;
+}
+
+.character-row .item-field--name {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  text-decoration: none;
+  flex: 1 1 auto;
+}
+
+.character-row .item-actions {
+  margin-left: auto;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 34rem) {
+  body {
+    padding: 0 0.9rem;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  .character-banner {
+    flex-direction: column;
+  }
+
+  .sheet-section--avatar {
+    border-right: none;
+    border-bottom: 1px solid var(--gold-pale);
+  }
+
+  /* Give HP the full row on a phone so the taps stay comfortably large. */
+  .stat--hp {
+    grid-column: 1 / -1;
+  }
+
+  #character-header {
+    flex-direction: column;
+  }
+
+  /* Ledger rows can't hold four columns on a phone — stack name/rank/bonus
+     and let the actions sit on their own line. */
+  .item-row--compact {
+    grid-template-columns: 1fr auto;
+    gap: 0.3rem 0.75rem;
+  }
+  .item-row--compact .item-field:nth-child(3) {
+    text-align: left;
+  }
+
+  .sheet-section--avatar {
+    justify-content: center;
+    text-align: center;
+  }
 }

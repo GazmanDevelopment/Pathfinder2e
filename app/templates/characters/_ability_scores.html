@@ -16,6 +16,6 @@
       </div>
     {% endfor %}
   </div>
-  <button type="button" hx-get="/characters/{{ character.id }}/ability-scores/edit"
+  <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character.id }}/ability-scores/edit"
           hx-target="#ability-scores" hx-swap="outerHTML">Edit</button>
 </section>

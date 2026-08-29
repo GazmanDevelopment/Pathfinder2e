@@ -15,14 +15,14 @@
   <textarea name="effect" placeholder="Effect">{{ feature.effect or '' if feature else '' }}</textarea>
   <div class="item-actions">
     {% if feature %}
-      <button type="button" hx-put="/characters/{{ character_id }}/features/{{ feature.id }}"
+      <button type="button" class="btn btn--primary" hx-put="/characters/{{ character_id }}/features/{{ feature.id }}"
               hx-include="closest li" hx-target="closest li" hx-swap="outerHTML">Save</button>
-      <button type="button" hx-get="/characters/{{ character_id }}/features/{{ feature.id }}"
+      <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/features/{{ feature.id }}"
               hx-target="closest li" hx-swap="outerHTML">Cancel</button>
     {% else %}
-      <button type="button" hx-post="/characters/{{ character_id }}/features"
+      <button type="button" class="btn btn--primary" hx-post="/characters/{{ character_id }}/features"
               hx-include="closest li" hx-target="closest li" hx-swap="outerHTML">Add</button>
-      <button type="button" hx-get="/characters/{{ character_id }}/features/add-trigger"
+      <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/features/add-trigger"
               hx-target="closest li" hx-swap="outerHTML">Cancel</button>
     {% endif %}
   </div>

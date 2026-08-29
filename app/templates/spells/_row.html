@@ -11,9 +11,9 @@
   </div>
   {% if spell.effect %}<p class="item-effect">{{ spell.effect }}</p>{% endif %}
   <div class="item-actions">
-    <button type="button" hx-get="/characters/{{ character_id }}/spells/{{ spell.id }}/edit"
+    <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/spells/{{ spell.id }}/edit"
             hx-target="#spell-row-{{ spell.id }}" hx-swap="outerHTML">Edit</button>
-    <button type="button" hx-delete="/characters/{{ character_id }}/spells/{{ spell.id }}"
+    <button type="button" class="btn btn--danger" hx-delete="/characters/{{ character_id }}/spells/{{ spell.id }}"
             hx-target="#spell-row-{{ spell.id }}" hx-swap="outerHTML" hx-confirm="Delete this spell?">Delete</button>
   </div>
 </li>
