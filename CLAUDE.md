@@ -73,7 +73,7 @@ is one query per section; an edit is a single insert/update/delete.
 
 | Table | Holds | Sheet section |
 |---|---|---|
-| `users` | email, display name, role, auth source | login |
+| `users` | email, display name, role, auth source, `is_disabled` (Phase 4b) | login |
 | `characters` | name, ancestry, class, level, size, speed, languages, alignment, HP cur/max, AC, class DC, spell DC/atk, perception, hero points, `avatar_path` | Header + Core Statistics |
 | `ability_scores` | str/dex/con/int/wis/cha score + mod (or 6 columns on `characters`) | Ability Scores |
 | `proficiencies` | saves & skills: name, `bonus`, rank (Trained…Legendary) | Saving Throws & Skills |
@@ -161,6 +161,8 @@ Each phase leaves something that runs. **Auth comes after the app works.**
   by email.
 - **Phase 4 — Multi-user & scoping.** Scope every query by `user_id`, add the
   allow-list, make one account admin. Each player sees only their own characters.
+- **Phase 4b — Disable or delete users.** A separate view or filter on
+  `/admin/users` for disabled accounts, alongside the active list. See below.
 - **Phase 5 — Polish & safety net.** Print/export view, dataset snapshot schedule
   for backups, optional Pathbuilder JSON import.
 - **Phase 6 — Tap to roll.** The dice roller: saves/skills/abilities from stored
@@ -174,6 +176,47 @@ Each phase leaves something that runs. **Auth comes after the app works.**
   free-text note to Claude, get back a proposed leveled-up sheet, review it as a
   diff, archive the pre-level-up character on accept. Fully optional; the app is
   complete and usable without it. See below.
+
+---
+
+## Disable or delete users (Phase 4b)
+
+Builds directly on Phase 4's allow-list and admin role. Two distinct admin
+actions on `/admin/users`, not one:
+
+- **Disable** — the normal path for a player who's left the table but has
+  characters worth keeping. `users.is_disabled` (new column). A disabled
+  account:
+  - **Can't log in.** Rejected at the same point as an unregistered email,
+    with its own message ("This account has been disabled — contact an
+    admin"), not the "not registered" one — they're different situations for
+    an admin troubleshooting access. Takes effect **immediately**, even for
+    a session that's already open — the login-gate must re-check the
+    database, not just trust the identity cached in the session cookie, the
+    same principle Phase 4 already applied to character ownership.
+  - **Vanishes from the admin's default "All Characters" view.** Their
+    sheets aren't deleted or reassigned — they're filtered out of the normal
+    admin list the same way a Phase 4 non-admin's view is filtered to their
+    own characters.
+  - **Is still reachable.** `/admin/users` gains a second view or filter —
+    Active vs. Disabled — and clicking a disabled user there opens *their*
+    character list (reusing the admin ownership-bypass from Phase 4, so
+    opening one of their sheets to view or edit already works; the new part
+    is just the filtered entry point to reach it). This is how an admin
+    checks or archives what a departed player had before deciding whether to
+    delete them outright.
+- **Delete** — a hard removal of the `users` row itself, offered only for an
+  account with **zero characters** (a mistyped or no-longer-needed
+  allow-list entry, most often). An account that owns characters can only be
+  disabled, never deleted, so deleting a user is never the thing that
+  destroys someone's character data — that stays true to the project's
+  free-form, never-destroy-data-casually stance. Deleting a user who still
+  owns characters isn't offered by the UI; enforce it in the route too, not
+  just by hiding the button.
+- **Guard rail:** never allow the last remaining admin to be disabled or
+  deleted, including by themselves. There's no supported way back in once
+  `users` is non-empty (Phase 4's bootstrap only fires on an *empty* table),
+  so a self-lockout there means direct database surgery to recover.
 
 ---
 
