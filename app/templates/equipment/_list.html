@@ -1,0 +1,10 @@
+{% set character_id = character.id %}
+<section class="sheet-section">
+  <h2>Equipment</h2>
+  <ul id="equipment-list" class="item-list">
+    {% for item in character.equipment %}
+      {% include "equipment/_row.html" %}
+    {% endfor %}
+    {% include "equipment/_add_trigger.html" %}
+  </ul>
+</section>

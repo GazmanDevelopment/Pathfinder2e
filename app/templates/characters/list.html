@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Characters{% endblock %}
+
+{% block content %}
+  <h1>Characters</h1>
+
+  <form method="post" action="/characters" class="create-character-form">
+    <input type="text" name="name" placeholder="New character name" required>
+    <button type="submit">Create character</button>
+  </form>
+
+  <ul id="character-list" class="item-list">
+    {% for character in characters %}
+      {% include "characters/_character_row.html" %}
+    {% else %}
+      <li>No characters yet — create one above.</li>
+    {% endfor %}
+  </ul>
+{% endblock %}

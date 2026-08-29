@@ -1,0 +1,12 @@
+<li id="character-row-{{ character.id }}" class="item-row character-row">
+  <img class="avatar-thumb" src="{{ '/uploads/' ~ character.avatar_thumb_path if character.avatar_thumb_path else '/static/avatar-placeholder.svg' }}" alt="">
+  <a href="/characters/{{ character.id }}" class="item-field item-field--name">{{ character.name }}</a>
+  <span class="item-field">{{ character.ancestry or "" }}</span>
+  <span class="item-field">{{ character.character_class or "" }}</span>
+  <span class="item-field">{{ "Level " ~ character.level if character.level is not none else "" }}</span>
+  <span class="item-actions">
+    <button type="button" hx-delete="/characters/{{ character.id }}"
+            hx-target="#character-row-{{ character.id }}" hx-swap="outerHTML"
+            hx-confirm="Delete {{ character.name }}? This removes everything on their sheet.">Delete</button>
+  </span>
+</li>

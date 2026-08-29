@@ -1,0 +1,18 @@
+<li id="equipment-row-{{ item.id }}" class="item-row item-row--card">
+  <div class="item-summary">
+    <strong>{{ item.name }}</strong>
+    {% if item.qty is not none %}<span class="tag">x{{ item.qty }}</span>{% endif %}
+    {% if item.container %}<span class="tag">{{ item.container }}</span>{% endif %}
+    {% if item.description %}<span class="tag">{{ item.description }}</span>{% endif %}
+    {% if item.attack_bonus is not none %}<span class="tag">Atk {{ "%+d"|format(item.attack_bonus) }}</span>{% endif %}
+    {% if item.damage_formula %}<span class="tag">Dmg {{ item.damage_formula }}</span>{% endif %}
+    {% if item.agile %}<span class="tag">Agile</span>{% endif %}
+  </div>
+  {% if item.notes %}<p class="item-effect">{{ item.notes }}</p>{% endif %}
+  <div class="item-actions">
+    <button type="button" hx-get="/characters/{{ character_id }}/equipment/{{ item.id }}/edit"
+            hx-target="#equipment-row-{{ item.id }}" hx-swap="outerHTML">Edit</button>
+    <button type="button" hx-delete="/characters/{{ character_id }}/equipment/{{ item.id }}"
+            hx-target="#equipment-row-{{ item.id }}" hx-swap="outerHTML" hx-confirm="Delete this item?">Delete</button>
+  </div>
+</li>

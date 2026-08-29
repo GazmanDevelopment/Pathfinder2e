@@ -1,0 +1,25 @@
+<li id="{{ 'equipment-row-' ~ item.id if item else 'equipment-row-new' }}" class="item-row item-row--card item-row--edit">
+  <div class="field-grid">
+    <input type="text" name="name" value="{{ item.name if item else '' }}" placeholder="Item name" required>
+    <input type="text" name="description" value="{{ item.description or '' if item else '' }}" placeholder="Bonus / damage text">
+    <input type="number" name="qty" value="{{ item.qty if item and item.qty is not none else (1 if not item else '') }}" placeholder="Qty">
+    <input type="text" name="container" value="{{ item.container or '' if item else '' }}" placeholder="Container">
+    <input type="number" name="attack_bonus" value="{{ item.attack_bonus if item and item.attack_bonus is not none else '' }}" placeholder="Attack bonus">
+    <input type="text" name="damage_formula" value="{{ item.damage_formula or '' if item else '' }}" placeholder="Damage (e.g. 1d8+2)">
+    <label class="checkbox-field"><input type="checkbox" name="agile" value="true" {% if item and item.agile %}checked{% endif %}> Agile</label>
+  </div>
+  <textarea name="notes" placeholder="Notes">{{ item.notes or '' if item else '' }}</textarea>
+  <div class="item-actions">
+    {% if item %}
+      <button type="button" hx-put="/characters/{{ character_id }}/equipment/{{ item.id }}"
+              hx-include="closest li" hx-target="closest li" hx-swap="outerHTML">Save</button>
+      <button type="button" hx-get="/characters/{{ character_id }}/equipment/{{ item.id }}"
+              hx-target="closest li" hx-swap="outerHTML">Cancel</button>
+    {% else %}
+      <button type="button" hx-post="/characters/{{ character_id }}/equipment"
+              hx-include="closest li" hx-target="closest li" hx-swap="outerHTML">Add</button>
+      <button type="button" hx-get="/characters/{{ character_id }}/equipment/add-trigger"
+              hx-target="closest li" hx-swap="outerHTML">Cancel</button>
+    {% endif %}
+  </div>
+</li>

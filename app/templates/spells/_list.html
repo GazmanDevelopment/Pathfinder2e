@@ -1,0 +1,10 @@
+{% set character_id = character.id %}
+<section class="sheet-section">
+  <h2>Spells</h2>
+  <ul id="spell-list" class="item-list">
+    {% for spell in character.spells %}
+      {% include "spells/_row.html" %}
+    {% endfor %}
+    {% include "spells/_add_trigger.html" %}
+  </ul>
+</section>

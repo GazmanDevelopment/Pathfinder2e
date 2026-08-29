@@ -1,0 +1,14 @@
+<li id="feature-row-{{ feature.id }}" class="item-row item-row--card">
+  <div class="item-summary">
+    <strong>{{ feature.name }}</strong>
+    {% if feature.source %}<span class="tag">{{ feature.source }}</span>{% endif %}
+    {% if feature.level_gained is not none %}<span class="tag">Level {{ feature.level_gained }}</span>{% endif %}
+  </div>
+  {% if feature.effect %}<p class="item-effect">{{ feature.effect }}</p>{% endif %}
+  <div class="item-actions">
+    <button type="button" hx-get="/characters/{{ character_id }}/features/{{ feature.id }}/edit"
+            hx-target="#feature-row-{{ feature.id }}" hx-swap="outerHTML">Edit</button>
+    <button type="button" hx-delete="/characters/{{ character_id }}/features/{{ feature.id }}"
+            hx-target="#feature-row-{{ feature.id }}" hx-swap="outerHTML" hx-confirm="Delete this feature?">Delete</button>
+  </div>
+</li>

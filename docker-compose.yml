@@ -3,3 +3,9 @@ services:
     build: .
     ports:
       - "8000:8000"
+    environment:
+      DATABASE_URL: "sqlite:////data/sheet.db"
+      UPLOAD_DIR: "/uploads"
+    volumes:
+      - ./data:/data
+      - ./uploads:/uploads
