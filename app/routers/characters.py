@@ -13,15 +13,20 @@ router = APIRouter(prefix="/characters", tags=["characters"])
 
 @router.get("")
 def list_characters(request: Request, db: Session = Depends(get_db)):
-    characters = db.query(Character).order_by(Character.id).all()
+    user = request.session["user"]
+    query = db.query(Character).order_by(Character.id)
+    if user["role"] != "admin":
+        query = query.filter(Character.user_id == user["id"])
+    characters = query.all()
     return templates.TemplateResponse(
-        "characters/list.html", {"request": request, "characters": characters}
+        "characters/list.html",
+        {"request": request, "characters": characters, "is_admin_view": user["role"] == "admin"},
     )
 
 
 @router.post("")
-def create_character(name: str = Form(...), db: Session = Depends(get_db)):
-    character = Character(name=name)
+def create_character(request: Request, name: str = Form(...), db: Session = Depends(get_db)):
+    character = Character(name=name, user_id=request.session["user"]["id"])
     db.add(character)
     db.flush()
     for prof_name in DEFAULT_PROFICIENCY_NAMES:

@@ -3,7 +3,7 @@
 {% block title %}Characters{% endblock %}
 
 {% block content %}
-  <h1>Characters</h1>
+  <h1>{{ "All Characters (Admin)" if is_admin_view else "Characters" }}</h1>
 
   <form method="post" action="/characters" class="create-character-form">
     <input type="text" name="name" placeholder="New character name" required>

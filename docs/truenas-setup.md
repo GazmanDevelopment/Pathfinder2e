@@ -1,11 +1,13 @@
-# Deploying to TrueNAS SCALE (Phase 3)
+# Deploying to TrueNAS SCALE (Phase 4)
 
 This doc tracks the deployment story alongside the app — it's phase-dependent,
 not a one-time write-up. Phase 2 added **login via Authelia** (local accounts,
-Argon2, TOTP). Phase 3 adds a **second sign-in button, Microsoft Entra**, so
-SSO users can log in too. Both paths resolve to the same `users` row by email,
-so a person can use either. Entra is optional — leave its env unset and only
-the "Sign in with local account" button shows.
+Argon2, TOTP). Phase 3 added a **second sign-in button, Microsoft Entra**, so
+SSO users can log in too — both paths resolve to the same `users` row by
+email. Phase 4 adds **multi-user scoping**: each player now sees only their
+own characters, and access is gated by an allow-list (§8, below). Entra is
+optional — leave its env unset and only the "Sign in with local account"
+button shows.
 
 ## 1. Prerequisites
 
@@ -130,7 +132,7 @@ Because real login now exists, it's safe to expose the app through the public
 reverse-proxy route — but note the gate is "any user a provider authenticates":
 anyone in `users_database.yml`, plus (once Entra is added below) anyone in the
 tenant/accounts you allow there. Per-user character scoping, an app-level
-allow-list, and the admin role arrive in **Phase 4**.
+allow-list, and the admin role arrive in **Phase 4** (below).
 
 ## 7. Add Microsoft Entra (optional — Phase 3)
 
@@ -166,9 +168,27 @@ Verify: sign in with Microsoft and land on the character list. If the same
 person already logged in via a local account with the same email, they get the
 **same** characters — one `users` row, two ways in.
 
-## What's deliberately not here yet
+## 8. Multi-user & the allow-list (Phase 4)
 
-- No per-user scoping / allow-list / admin — Phase 4. Every signed-in user
-  currently sees every character.
+Each player now sees only their own characters; access is gated by an
+**allow-list** — a login only works for an email already present in the
+app's `users` table.
+
+- **The very first person to ever log in becomes admin**, and that login is
+  the *only* one that auto-creates itself — every login after that requires
+  the email to already be registered. This means there's a real race: if the
+  app is reachable before you've logged in yourself, whoever gets there
+  first becomes admin. **Log in immediately after first bringing the stack
+  up, before sharing the URL with anyone.**
+- To add a player: as the admin, visit `/admin/users` and add their email.
+  It must match the email their provider (Authelia or Entra) will send —
+  same rule as step 7's Entra note. They can then sign in with either
+  provider.
+- Someone not on the list gets a plain "your account isn't registered"
+  message at `/login` rather than a session — nothing is created for them.
+- The admin sees every character (with an owner label on each); everyone
+  else sees only their own. There's currently no UI to promote another
+  account to admin or remove someone from the list — just the one bootstrap
+  admin and the add-email form.
 
 See the root [CLAUDE.md](../CLAUDE.md) for the full build order.

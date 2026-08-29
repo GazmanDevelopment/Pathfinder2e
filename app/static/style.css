@@ -363,6 +363,27 @@ a:hover {
   border-radius: var(--radius);
 }
 
+.form-success {
+  width: 100%;
+  margin: 0 0 0.5rem;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.9rem;
+  color: var(--hp-over);
+  background: var(--surface-sunken);
+  border: 1px solid var(--gold-pale);
+  border-left: 3px solid var(--hp-over);
+  border-radius: var(--radius);
+}
+
+/* --- Admin: users -------------------------------------------------------- */
+
+.admin-user-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.2fr) auto;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 /* --------------------------------------------------------------------------
    Stat blocks (core statistics, ability scores)
    -------------------------------------------------------------------------- */
