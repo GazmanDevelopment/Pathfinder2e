@@ -1,7 +1,9 @@
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -12,6 +14,7 @@ from app.routers import avatar, characters, equipment, features, notes, proficie
 from app.templating import templates
 
 BASE_DIR = Path(__file__).resolve().parent
+logger = logging.getLogger("app")
 
 # Directories must exist before StaticFiles mounts below, and before the
 # lifespan's create_all() runs against the SQLite file path.
@@ -40,34 +43,74 @@ app.include_router(avatar.router)
 
 
 ERROR_HEADINGS = {
-    404: "Not found",
+    400: "Bad request",
     403: "Not allowed",
+    404: "Not found",
+    405: "Not allowed here",
+    413: "Too large",
+    422: "That didn't look right",
     500: "Something went wrong",
 }
 
+# Shown instead of the raw exception text, which can be terse or leak
+# internals. Keyed by status; anything unlisted falls back to the detail.
+ERROR_MESSAGES = {
+    404: "That page or character doesn't exist. It may have been deleted.",
+    405: "That address doesn't accept this kind of request.",
+    422: "Some of the values submitted weren't valid. Go back and try again.",
+    500: "An unexpected error occurred. The details have been logged.",
+}
 
-@app.exception_handler(StarletteHTTPException)
-def http_exception_handler(request: Request, exc: StarletteHTTPException):
-    """Render errors as a page for browsers, keeping JSON for API clients.
 
-    A character can be deleted while someone still has its URL open (or
-    bookmarked), so a bare JSON body is a dead end for the most likely
-    404 this app produces.
+def render_error(request: Request, status: int, detail: str, json_detail=None):
+    """Errors as a page for browsers, JSON for everything else.
+
+    HTMX requests land here too, but htmx won't swap a non-2xx body by
+    default, so they fall through to the JSON branch harmlessly.
     """
-    wants_html = "text/html" in request.headers.get("accept", "")
-    if not wants_html:
-        return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+    if "text/html" not in request.headers.get("accept", ""):
+        return JSONResponse(
+            {"detail": json_detail if json_detail is not None else detail},
+            status_code=status,
+        )
 
     return templates.TemplateResponse(
         "error.html",
         {
             "request": request,
-            "status": exc.status_code,
-            "heading": ERROR_HEADINGS.get(exc.status_code, "Error"),
-            "detail": exc.detail,
+            "status": status,
+            "heading": ERROR_HEADINGS.get(status, "Error"),
+            "detail": ERROR_MESSAGES.get(status, detail),
         },
-        status_code=exc.status_code,
+        status_code=status,
     )
+
+
+@app.exception_handler(StarletteHTTPException)
+def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """404s, 405s, and any explicit HTTPException raised by a route.
+
+    A character can be deleted while someone still has its URL open or
+    bookmarked, which makes 404 the most likely error this app produces.
+    """
+    return render_error(request, exc.status_code, str(exc.detail))
+
+
+@app.exception_handler(RequestValidationError)
+def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Malformed form or query data — e.g. a hand-edited request."""
+    return render_error(request, 422, "Invalid request data", json_detail=exc.errors())
+
+
+@app.exception_handler(Exception)
+def unhandled_exception_handler(request: Request, exc: Exception):
+    """Last resort, so an unexpected crash is still a readable page.
+
+    Starlette re-raises after this returns, so uvicorn still logs the full
+    traceback — the page deliberately shows none of it.
+    """
+    logger.exception("Unhandled error on %s %s", request.method, request.url.path)
+    return render_error(request, 500, "Internal server error")
 
 
 @app.get("/")
