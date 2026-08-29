@@ -113,27 +113,64 @@ Then edit the templates (swap `example.com` for your domain throughout):
 
 ## 4. Reverse proxy — two routes under one parent domain
 
-The session cookie is scoped to the parent domain, so the app and Authelia
-must share it. Add both routes to your existing Traefik/Caddy (Let's Encrypt
-as usual — the proxy terminates TLS and forwards plain HTTP):
+Authelia's session cookie is scoped to a parent domain, and genuinely does
+not work with a bare IP address — even for LAN-only testing, Authelia needs
+a real hostname to set its own cookie against. So this step isn't optional,
+even before you're ready to expose anything publicly.
 
+**Where your reverse proxy runs changes how it reaches these containers:**
+
+- **A proxy that's itself a container in this compose project** (e.g.
+  Traefik/Caddy added as another service here) can reach them by Docker's
+  internal network name and port — `sheet:8000`, `authelia:9091` — without
+  either needing a published host port.
+- **A proxy on a separate device** — this repo's `docker-compose.yml`
+  assumes this case, since it's the common one for a home NAS (a Synology
+  DSM reverse proxy, pfSense/OPNsense, or any proxy that isn't itself a
+  container here). It can only reach these services over the network, via
+  the **published host ports** (`8101` for the app, `9091` for Authelia —
+  both are `ports:`, not `expose:`, in the compose file for exactly this
+  reason). Point it at `<this-host-ip>:8101` and `<this-host-ip>:9091`.
+
+Either way, you need two hostnames sharing one parent domain, e.g.:
 ```
-sheet.<yourdomain>  →  sheet:8000
+sheet.<yourdomain>  →  sheet:8000            (same-host proxy)
 auth.<yourdomain>   →  authelia:9091
+
+pathfinder.example.com      →  <host-ip>:8101   (separate-device proxy)
+auth.pathfinder.example.com →  <host-ip>:9091
 ```
+
+**Synology DSM specifically** (Control Panel → Login Portal → Advanced →
+Reverse Proxy, or Application Portal → Reverse Proxy on newer DSM): create
+one rule per hostname, source port 443 (HTTPS) → destination the host IP
+and the relevant published port (HTTP — the proxy terminates TLS, the
+containers don't need certs). In each rule's **Custom Header** tab, confirm
+`X-Forwarded-Proto: https` is being sent — DSM doesn't always add this
+automatically, and without it the app sees every request as plain HTTP even
+though the browser used HTTPS, which silently breaks the session cookie (see
+`SESSION_HTTPS_ONLY` in step 5). Certificates for both hostnames can be free
+Let's Encrypt certs issued directly in DSM (Control Panel → Security →
+Certificate) and assigned to each rule.
 
 ## 5. Deploy
 
-Set the app's environment (a `.env` beside the compose file is git-ignored):
+Set the app's environment (a `.env` beside the compose file is git-ignored).
+`APP_BASE_URL` and `OIDC_AUTHELIA_ISSUER` are hardcoded directly in
+`docker-compose.yml` (not read from `.env`) since this deployment's domain
+is committed as-is — only actual secrets need to go here:
 
 ```bash
 # .env
 SESSION_SECRET=<run: openssl rand -hex 32>
-APP_BASE_URL=https://sheet.example.com
-OIDC_AUTHELIA_ISSUER=https://auth.example.com
 OIDC_AUTHELIA_CLIENT_ID=pf2e-sheet
 OIDC_AUTHELIA_CLIENT_SECRET=<the PLAINTEXT client secret from step 3>
 ```
+
+Don't set `SESSION_HTTPS_ONLY` — leave it at its default (`true`). The proxy
+in step 4 terminates real TLS, so the browser-to-proxy hop is genuinely
+HTTPS; forcing this off is only for plain-HTTP LAN testing with no proxy at
+all, and would weaken the session cookie unnecessarily here.
 
 Then bring the stack up (app + Authelia together):
 
@@ -174,7 +211,8 @@ from `.env`.
 > Authelia needs its own Custom App the same way, using `image:
 > authelia/authelia:4.38` (that one was never the problem — it's pulled from
 > Docker Hub, not built) with `/mnt/<pool>/apps/pf2e-sheets/authelia:/config`
-> mounted.
+> mounted and `ports: ["9091:9091"]` published — see §4 for why a published
+> port matters here specifically.
 >
 > **The rebuild workflow differs too**: after every `git pull`, re-run
 > `docker build -t pf2e-sheet:latest .` over SSH, then redeploy/restart the
