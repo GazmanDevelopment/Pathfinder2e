@@ -1,0 +1,75 @@
+# Authelia configuration — TEMPLATE for the TrueNAS deployment.
+#
+# This file cannot be exercised on the dev machine (Authelia runs as a
+# container and Docker isn't installed there); it is written to spec and must
+# be verified on the box. Replace every <PLACEHOLDER> and supply the secrets
+# listed in docs/truenas-setup.md. Swap example.com for your own domain.
+
+theme: light
+
+server:
+  address: "tcp://0.0.0.0:9091"
+
+log:
+  level: info
+
+# Secrets come from files (mounted alongside this config) rather than inline,
+# so they never live in the repo. See docs/truenas-setup.md.
+identity_validation:
+  reset_password:
+    jwt_secret: "@/config/secrets/jwt_secret"
+
+authentication_backend:
+  file:
+    path: /config/users_database.yml
+    password:
+      algorithm: argon2
+      argon2:
+        variant: argon2id
+
+# Cookie is scoped to the parent domain so it is valid for both the app and
+# Authelia (they must live under the same parent domain).
+session:
+  secret: "@/config/secrets/session_secret"
+  cookies:
+    - domain: example.com
+      authelia_url: https://auth.example.com
+      default_redirection_url: https://sheet.example.com
+
+storage:
+  encryption_key: "@/config/secrets/storage_encryption_key"
+  local:
+    path: /config/db.sqlite3
+
+# Filesystem notifier is fine for a tiny home instance (writes TOTP-enrolment
+# and reset links to a file). Swap for SMTP if you want real email.
+notifier:
+  filesystem:
+    filename: /config/notification.txt
+
+# Require the second factor (TOTP) everywhere. Users enrol their authenticator
+# on first login.
+access_control:
+  default_policy: two_factor
+
+identity_providers:
+  oidc:
+    hmac_secret: "@/config/secrets/oidc_hmac_secret"
+    jwks:
+      - key: "@/config/secrets/oidc_issuer_private_key.pem"
+    clients:
+      - client_id: pf2e-sheet
+        client_name: "Character Sheet"
+        # Hash of the client secret — generate with:
+        #   authelia crypto hash generate pbkdf2 --variant sha512 --random ...
+        client_secret: "<PBKDF2_HASH_OF_CLIENT_SECRET>"
+        public: false
+        authorization_policy: two_factor
+        redirect_uris:
+          - https://sheet.example.com/auth/authelia/callback
+        scopes:
+          - openid
+          - email
+          - profile
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: client_secret_post

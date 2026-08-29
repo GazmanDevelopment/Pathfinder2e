@@ -6,6 +6,28 @@ services:
     environment:
       DATABASE_URL: "sqlite:////data/sheet.db"
       UPLOAD_DIR: "/uploads"
+      # Auth (Phase 2). Point the app at Authelia's OIDC endpoints and give it
+      # a session signing secret. See authelia/ for the provider side, and
+      # docs/truenas-setup.md for generating the secrets.
+      SESSION_SECRET: "${SESSION_SECRET}"
+      APP_BASE_URL: "${APP_BASE_URL}"                 # e.g. https://sheet.example.com
+      OIDC_AUTHELIA_ISSUER: "${OIDC_AUTHELIA_ISSUER}" # e.g. https://auth.example.com
+      OIDC_AUTHELIA_CLIENT_ID: "${OIDC_AUTHELIA_CLIENT_ID}"
+      OIDC_AUTHELIA_CLIENT_SECRET: "${OIDC_AUTHELIA_CLIENT_SECRET}"
     volumes:
       - ./data:/data
       - ./uploads:/uploads
+
+  authelia:
+    image: authelia/authelia:4.38
+    volumes:
+      - ./authelia:/config      # configuration.yml, users_database.yml, secrets, sqlite
+    environment:
+      TZ: "Etc/UTC"
+    # No published port: the reverse proxy reaches it on the internal network,
+    # and it must share a parent domain with the app for the session cookie.
+    expose:
+      - "9091"
+# The existing reverse proxy (Traefik/Caddy) fronts BOTH services with TLS:
+#   sheet.<domain> -> sheet:8000
+#   auth.<domain>  -> authelia:9091

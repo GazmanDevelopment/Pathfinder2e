@@ -1,0 +1,19 @@
+# Authelia file backend — TEMPLATE. One entry per player.
+#
+# Generate each password hash on the box (never store plaintext):
+#   docker run --rm authelia/authelia:4.38 \
+#     authelia crypto hash generate argon2 --password 'their-password'
+# then paste the resulting $argon2id$... string as `password` below.
+#
+# TOTP is NOT stored here — each user enrols their authenticator app on first
+# login, and Authelia keeps the secret in its own storage (db.sqlite3).
+
+users:
+  gareth:
+    disabled: false
+    displayname: "Gareth"
+    # Replace with a real argon2id hash (see command above).
+    password: "$argon2id$v=19$m=65536,t=3,p=4$<REPLACE_WITH_REAL_HASH>"
+    email: gareth@example.com
+    groups:
+      - admins

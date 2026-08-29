@@ -1,17 +1,26 @@
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
+from urllib.parse import urlencode
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.sessions import SessionMiddleware
 
-from app.config import UPLOAD_DIR
+from app.auth import NotAuthenticated, require_login
+from app.config import SESSION_HTTPS_ONLY, SESSION_SECRET, UPLOAD_DIR
 from app.db import Base, engine
-from app.routers import avatar, characters, equipment, features, notes, proficiencies, spells
+from app.routers import auth, avatar, characters, equipment, features, notes, proficiencies, spells
 from app.templating import templates
+
+if not SESSION_SECRET:
+    raise RuntimeError(
+        "SESSION_SECRET is not set. Auth is always on, so a session signing "
+        "secret is required. Set the SESSION_SECRET environment variable."
+    )
 
 BASE_DIR = Path(__file__).resolve().parent
 logger = logging.getLogger("app")
@@ -30,16 +39,30 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Character Sheet", lifespan=lifespan)
 
+# `lax` lets the session cookie survive the top-level redirect back from the
+# IdP; authlib also stashes its transient state/nonce in this session.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_SECRET,
+    same_site="lax",
+    https_only=SESSION_HTTPS_ONLY,
+)
+
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
-app.include_router(characters.router)
-app.include_router(proficiencies.router)
-app.include_router(spells.router)
-app.include_router(equipment.router)
-app.include_router(features.router)
-app.include_router(notes.router)
-app.include_router(avatar.router)
+# Auth routes are open; every sheet route requires a logged-in session. The
+# gating lives here so no individual router file has to know about auth.
+app.include_router(auth.router)
+
+_protected = [Depends(require_login)]
+app.include_router(characters.router, dependencies=_protected)
+app.include_router(proficiencies.router, dependencies=_protected)
+app.include_router(spells.router, dependencies=_protected)
+app.include_router(equipment.router, dependencies=_protected)
+app.include_router(features.router, dependencies=_protected)
+app.include_router(notes.router, dependencies=_protected)
+app.include_router(avatar.router, dependencies=_protected)
 
 
 ERROR_HEADINGS = {
@@ -100,6 +123,20 @@ def http_exception_handler(request: Request, exc: StarletteHTTPException):
 def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Malformed form or query data — e.g. a hand-edited request."""
     return render_error(request, 422, "Invalid request data", json_detail=exc.errors())
+
+
+@app.exception_handler(NotAuthenticated)
+def not_authenticated_handler(request: Request, exc: NotAuthenticated):
+    """No session user. Bounce browsers to /login (preserving where they were),
+    tell htmx to redirect client-side, and give API clients a plain 401."""
+    if request.headers.get("HX-Request") == "true":
+        resp = Response(status_code=200)
+        resp.headers["HX-Redirect"] = "/login"
+        return resp
+    if "text/html" in request.headers.get("accept", ""):
+        target = "/login?" + urlencode({"next": request.url.path})
+        return RedirectResponse(url=target, status_code=303)
+    return JSONResponse({"detail": "Not authenticated"}, status_code=401)
 
 
 @app.exception_handler(Exception)
