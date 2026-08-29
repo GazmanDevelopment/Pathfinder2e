@@ -163,6 +163,9 @@ Each phase leaves something that runs. **Auth comes after the app works.**
   allow-list, make one account admin. Each player sees only their own characters.
 - **Phase 4b — Disable or delete users.** A separate view or filter on
   `/admin/users` for disabled accounts, alongside the active list. See below.
+- **Phase 4c — Admin sets a local account's password.** Lets an admin type a
+  starting password for a player from `/admin/users` instead of hand-editing
+  Authelia's `users_database.yml` over SSH. See below.
 - **Phase 5 — Polish & safety net.** Print/export view, dataset snapshot schedule
   for backups, optional Pathbuilder JSON import.
 - **Phase 6 — Tap to roll.** The dice roller: saves/skills/abilities from stored
@@ -217,6 +220,58 @@ actions on `/admin/users`, not one:
   deleted, including by themselves. There's no supported way back in once
   `users` is non-empty (Phase 4's bootstrap only fires on an *empty* table),
   so a self-lockout there means direct database surgery to recover.
+
+---
+
+## Admin sets a local account's password (Phase 4c)
+
+Today, adding a local (Authelia) player is a two-system, SSH-only chore: the
+admin allow-lists their email in the app's `/admin/users` (Phase 4), *and*
+separately runs `authelia crypto hash generate argon2` by hand and edits
+`authelia/users_database.yml` on the box. Phase 4c collapses the second half
+into the same admin page: a **"Set password"** action per local-account row
+that takes a plaintext password and does the hashing and file write itself.
+
+**Decided explicitly, not the alternative:** the admin types a password
+directly, rather than the app triggering a self-service reset-email flow.
+This was a deliberate choice over the "more hands-off" alternative — Authelia
+has no documented admin-triggered-reset API to build that on anyway, and
+direct admin-set passwords fit this app's actual scale (a GM setting up a
+handful of known players) better than email-based self-service.
+
+**This automates the documented manual process — it does not replace
+Authelia as the source of truth for authentication:**
+- The app computes an **Argon2id** hash matching Authelia's own default
+  parameters (memory 65536 KiB, 3 iterations, parallelism 4, 16-byte salt,
+  32-byte key) — the same hash Authelia's own CLI would produce, not a
+  competing scheme. If a deployment ever customizes
+  `authentication_backend.file.password.argon2` in `configuration.yml`, the
+  app's parameters must be updated to match or the hash won't verify.
+- The app writes/updates that user's entry directly in
+  `authelia/users_database.yml` (creating the entry — username, display
+  name, email, `disabled: false` — if the player doesn't have one yet, or
+  just replacing the password hash if they do). `configuration.yml` needs
+  `authentication_backend.file.watch: true` so Authelia live-reloads the
+  file; without it this needs a manual Authelia restart to take effect.
+- **What this still doesn't touch:** TOTP. Second-factor secrets live in
+  Authelia's separate encrypted storage backend (its own database), not in
+  `users_database.yml` — this feature can set a password but cannot read,
+  set, or bypass anyone's TOTP enrollment. A player still enrols their own
+  authenticator app through Authelia's normal flow on first login. Sessions
+  and lockouts remain entirely Authelia's, unchanged from Phase 2 — this is
+  the one narrow exception to "never hand-roll auth" in §2, and it's scoped
+  as tightly as possible: password hashing only, using Authelia's own
+  algorithm and parameters, writing to Authelia's own user store.
+
+**Infrastructure this needs that doesn't exist yet:**
+- The `sheet` container needs read-write access to
+  `authelia/users_database.yml` — a new volume mount alongside the existing
+  `data`/`uploads` ones, e.g. `./authelia:/authelia-config`, plus a
+  `AUTHELIA_USERS_DB_PATH` env var pointing at the file. This is a real
+  increase in blast radius if the app is ever compromised (write access to
+  Authelia's credential store), worth weighing against the SSH-workflow
+  convenience it buys.
+- A Python Argon2 implementation (`argon2-cffi`) as a new dependency.
 
 ---
 
