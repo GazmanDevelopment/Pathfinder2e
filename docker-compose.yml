@@ -14,6 +14,11 @@ services:
       OIDC_AUTHELIA_ISSUER: "${OIDC_AUTHELIA_ISSUER}" # e.g. https://auth.example.com
       OIDC_AUTHELIA_CLIENT_ID: "${OIDC_AUTHELIA_CLIENT_ID}"
       OIDC_AUTHELIA_CLIENT_SECRET: "${OIDC_AUTHELIA_CLIENT_SECRET}"
+      # Microsoft Entra (Phase 3). Leave unset to hide the "Sign in with
+      # Microsoft" button. Issuer is tenant-specific, not "common".
+      OIDC_ENTRA_ISSUER: "${OIDC_ENTRA_ISSUER}"       # https://login.microsoftonline.com/<tenant>/v2.0
+      OIDC_ENTRA_CLIENT_ID: "${OIDC_ENTRA_CLIENT_ID}"
+      OIDC_ENTRA_CLIENT_SECRET: "${OIDC_ENTRA_CLIENT_SECRET}"
     volumes:
       - ./data:/data
       - ./uploads:/uploads

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
-from app.auth import oauth, session_payload, upsert_user
+from app.auth import oauth, resolve_email, session_payload, upsert_user
 from app.config import APP_BASE_URL, configured_providers
 from app.db import get_db
 from app.templating import templates
@@ -64,17 +64,19 @@ async def auth_callback(provider: str, request: Request, db: Session = Depends(g
         return RedirectResponse(url="/login?" + urlencode({"error": "Sign-in failed. Please try again."}), status_code=303)
 
     claims = token.get("userinfo") or {}
-    email = claims.get("email")
+    email = resolve_email(claims)
+    # Authelia sets email_verified; Entra omits it entirely (None), which is
+    # fine — we only reject an *explicit* false.
     if not email or claims.get("email_verified") is False:
         return RedirectResponse(
-            url="/login?" + urlencode({"error": "Your account did not return a verified email address."}),
+            url="/login?" + urlencode({"error": "Your account did not return a usable email address."}),
             status_code=303,
         )
 
     user = upsert_user(
         db,
         email=email,
-        display_name=claims.get("name") or claims.get("preferred_username"),
+        display_name=claims.get("name") or claims.get("preferred_username") or email,
         auth_source=provider,
     )
     request.session["user"] = session_payload(user)
