@@ -84,6 +84,13 @@ async def auth_callback(provider: str, request: Request, db: Session = Depends(g
             url="/login?" + urlencode({"error": "Your account isn't registered for this table. Ask an admin to add you."}),
             status_code=303,
         )
+    if user.is_disabled:
+        # Distinct from "not registered" — different situations for an
+        # admin troubleshooting someone's access.
+        return RedirectResponse(
+            url="/login?" + urlencode({"error": "This account has been disabled. Contact an admin."}),
+            status_code=303,
+        )
 
     request.session["user"] = session_payload(user)
     target = request.session.pop("post_login_next", "/characters")

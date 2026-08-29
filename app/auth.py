@@ -1,8 +1,9 @@
 from authlib.integrations.starlette_client import OAuth
-from fastapi import HTTPException, Request
+from fastapi import Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.config import configured_providers
+from app.db import get_db
 from app.models import User
 
 # authlib's Starlette integration. Each configured provider is registered by
@@ -27,19 +28,39 @@ class NotAuthenticated(Exception):
     """
 
 
-def require_login(request: Request) -> dict:
-    """Dependency guarding every sheet route. Returns the session user dict."""
+class AccountDisabled(Exception):
+    """Raised by require_login when the session's user has since been
+    disabled (or deleted). Distinct from NotAuthenticated so the redirect can
+    carry its own message instead of the generic "please sign in" one.
+    """
+
+
+def require_login(request: Request, db: Session = Depends(get_db)) -> dict:
+    """Dependency guarding every sheet route. Returns the session user dict.
+
+    Re-checks the account is still active on every request, not just at
+    login time — Phase 4b's disable has to take effect immediately, even for
+    a session that's already open, so the cached session identity alone
+    isn't enough here (unlike role, which Phase 4 does trust from the
+    session — disable is the one case that must not wait for next login).
+    """
     user = request.session.get("user")
     if not user:
         raise NotAuthenticated()
+
+    db_user = db.get(User, user["id"])
+    if db_user is None or db_user.is_disabled:
+        request.session.clear()
+        raise AccountDisabled()
+
     return user
 
 
-def require_admin(request: Request) -> dict:
+def require_admin(request: Request, db: Session = Depends(get_db)) -> dict:
     """Dependency guarding /admin/*. No session -> same redirect-to-login as
     require_login; a logged-in non-admin gets a plain 403 (already rendered
     as a themed page by the global HTTPException handler)."""
-    user = require_login(request)
+    user = require_login(request, db)
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Admins only.")
     return user
