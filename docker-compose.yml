@@ -2,7 +2,10 @@ services:
   sheet:
     build: .
     ports:
-      - "8000:8000"
+      # Host:container. Container side stays 8000 (matches Dockerfile/uvicorn
+      # and the reverse-proxy's internal sheet:8000 network reference below);
+      # only the host side needs to change if 8000 is already taken on the box.
+      - "8101:8000"
     environment:
       DATABASE_URL: "sqlite:////data/sheet.db"
       UPLOAD_DIR: "/uploads"

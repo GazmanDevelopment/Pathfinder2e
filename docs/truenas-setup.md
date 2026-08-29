@@ -28,7 +28,7 @@ button shows.
 ## 2. Get the repo onto the box and build there
 
 No registry, no build step on the dev machine — build the image directly on
-the TrueNAS box itself.
+the TrueNAS box itself, over SSH:
 
 ```bash
 cd /mnt/<pool>/apps/pf2e-sheets   # or wherever you keep app checkouts
@@ -38,13 +38,31 @@ cd Pathfinder2e && git pull                            # on later phases
 docker build -t pf2e-sheet:latest .
 ```
 
-`docker-compose.yml` points at `build: .`, so `docker compose build` does this
-same on-box build for you — the manual `docker build` is just a sanity check.
+**Which deployment method you use from here matters, and picking wrong is
+the most common way to get stuck:**
+
+- **§5's `docker compose up -d --build`** (recommended) runs *in this
+  checked-out directory* and reads `docker-compose.yml`'s `build: .` itself
+  — the manual `docker build` above is then just an optional sanity check,
+  since compose does its own build.
+- **The Apps UI "Custom App (YAML)"** only ever sees the YAML text you paste
+  into it — it has **no access to this git checkout**, so a pasted `build:
+  .` has no `Dockerfile` to find and fails with *"failed to read dockerfile:
+  open Dockerfile: no such file or directory."* If you're using this method,
+  the manual `docker build` above is **required**, not optional — see the
+  Apps UI box in §5.
 
 ## 3. Generate Authelia's secrets and users
 
 The repo ships `authelia/` as **templates**. Real secrets and password hashes
 are generated on the box and are git-ignored — never commit them.
+
+If `docker` needs `sudo` on your box, do **not** put `sudo` in front of the
+`for` loop below — `sudo` runs a single program, it doesn't understand shell
+keywords like `for`/`do`, and `sudo for ...; do` fails with a shell parse
+error before `docker` is ever involved. Either drop `sudo` (try one `docker
+run ...` command first — if it works without it, your user's already in the
+`docker` group), or wrap the whole loop as one argument: `sudo sh -c '...'`.
 
 ```bash
 cd /mnt/<pool>/apps/pf2e-sheets/Pathfinder2e/authelia
@@ -55,13 +73,27 @@ for s in jwt_secret session_secret storage_encryption_key oidc_hmac_secret; do
   docker run --rm authelia/authelia:4.38 authelia crypto rand --length 64 \
     | tail -1 > secrets/$s
 done
+```
 
+If that loop needs `sudo`, use this instead (same four secrets, no loop to
+fight with `sudo` over):
+```bash
+sudo sh -c 'for s in jwt_secret session_secret storage_encryption_key oidc_hmac_secret; do
+  docker run --rm authelia/authelia:4.38 authelia crypto rand --length 64 | tail -1 > secrets/$s
+done'
+```
+
+```bash
 # OIDC issuer signing key (RSA)
 docker run --rm -v "$PWD/secrets:/keys" authelia/authelia:4.38 \
   authelia crypto pair rsa generate --directory /keys
 mv secrets/private.pem secrets/oidc_issuer_private_key.pem
 
-# A password hash for each player, pasted into users_database.yml
+# A password hash for each player who'll use a LOCAL account. Unlike every
+# other secret in this block, this one is NOT one-time: run it again, and
+# add another entry to users_database.yml, every time a new player joins
+# or an existing one changes their password. Entra/SSO players skip this
+# entirely — their password lives in your Microsoft tenant, not here.
 docker run --rm authelia/authelia:4.38 \
   authelia crypto hash generate argon2 --password 'their-password'
 
@@ -111,9 +143,44 @@ docker compose up -d --build
 ```
 
 The compose file mounts `./data`, `./uploads`, and `./authelia` from the
-dataset. If you deploy via the Apps UI **Custom App (YAML)** instead, use
-absolute dataset paths for the volumes (e.g.
-`/mnt/<pool>/apps/pf2e-sheets/authelia:/config`) and set the same env there.
+dataset — this SSH/CLI method is **recommended**: `--build` rebuilds from
+your latest `git pull` every time, and the env vars above load automatically
+from `.env`.
+
+> **Using the Apps UI "Custom App (YAML)" instead?** It cannot build an
+> image — it only receives the YAML text, with no access to this git
+> checkout — so `build: .` fails there with *"open Dockerfile: no such file
+> or directory."* You must build manually over SSH first (§2's `docker
+> build -t pf2e-sheet:latest .`), then paste YAML that references the tag
+> instead of building:
+> ```yaml
+> services:
+>   sheet:
+>     image: pf2e-sheet:latest   # not "build: ."
+>     ports:
+>       - "8101:8000"   # host:container — only the host side needs to change if 8000 is taken
+>     environment:
+>       DATABASE_URL: "sqlite:////data/sheet.db"
+>       UPLOAD_DIR: "/uploads"
+>       SESSION_SECRET: "<same as .env above>"
+>       APP_BASE_URL: "https://sheet.example.com"
+>       OIDC_AUTHELIA_ISSUER: "https://auth.example.com"
+>       OIDC_AUTHELIA_CLIENT_ID: "pf2e-sheet"
+>       OIDC_AUTHELIA_CLIENT_SECRET: "<the PLAINTEXT client secret from step 3>"
+>     volumes:
+>       - /mnt/<pool>/apps/pf2e-sheets/data:/data
+>       - /mnt/<pool>/apps/pf2e-sheets/uploads:/uploads
+> ```
+> Authelia needs its own Custom App the same way, using `image:
+> authelia/authelia:4.38` (that one was never the problem — it's pulled from
+> Docker Hub, not built) with `/mnt/<pool>/apps/pf2e-sheets/authelia:/config`
+> mounted.
+>
+> **The rebuild workflow differs too**: after every `git pull`, re-run
+> `docker build -t pf2e-sheet:latest .` over SSH, then redeploy/restart the
+> Custom App from the UI so it picks up the new image — the Apps UI has no
+> equivalent of `--build`, it never rebuilds on its own. This is the
+> tradeoff for this method; the CLI path above doesn't have this extra step.
 
 ## 6. Enrol TOTP and verify
 
@@ -125,7 +192,7 @@ absolute dataset paths for the volumes (e.g.
 4. `docker compose restart` and reload — you should still be signed in (the
    session cookie is signed with `SESSION_SECRET`) and your data intact
    (proves the three volumes are mounted).
-5. `http://<truenas-ip>:8000/healthz` still returns `{"status":"ok"}` without
+5. `http://<truenas-ip>:8101/healthz` still returns `{"status":"ok"}` without
    a login (it's intentionally open for the container healthcheck).
 
 Because real login now exists, it's safe to expose the app through the public
@@ -182,8 +249,14 @@ app's `users` table.
   up, before sharing the URL with anyone.**
 - To add a player: as the admin, visit `/admin/users` and add their email.
   It must match the email their provider (Authelia or Entra) will send —
-  same rule as step 7's Entra note. They can then sign in with either
-  provider.
+  same rule as step 7's Entra note.
+  - **If they're using a local account**, this app-side allow-list entry is
+    only half of it — they also need a **separate** entry in Authelia's own
+    `authelia/users_database.yml` (step 3, above) with their own password
+    hash, then a `docker compose restart authelia`. Two systems, two
+    additions, for every new local-account player.
+  - **If they're using Entra/SSO**, the allow-list entry above is the only
+    step — nothing to add on the Authelia side.
 - Someone not on the list gets a plain "your account isn't registered"
   message at `/login` rather than a session — nothing is created for them.
 - The admin sees every character (with an owner label on each); everyone
