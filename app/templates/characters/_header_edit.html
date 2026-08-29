@@ -10,8 +10,8 @@
     <label>Languages <input type="text" name="languages" value="{{ character.languages or '' }}"></label>
     <label>Alignment <input type="text" name="alignment" value="{{ character.alignment or '' }}"></label>
     <div class="item-actions">
-      <button type="submit">Save</button>
-      <button type="button" hx-get="/characters/{{ character.id }}/header"
+      <button type="submit" class="btn btn--primary">Save</button>
+      <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character.id }}/header"
               hx-target="#character-header" hx-swap="outerHTML">Cancel</button>
     </div>
   </form>

@@ -6,9 +6,9 @@
   </div>
   {% if feature.effect %}<p class="item-effect">{{ feature.effect }}</p>{% endif %}
   <div class="item-actions">
-    <button type="button" hx-get="/characters/{{ character_id }}/features/{{ feature.id }}/edit"
+    <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/features/{{ feature.id }}/edit"
             hx-target="#feature-row-{{ feature.id }}" hx-swap="outerHTML">Edit</button>
-    <button type="button" hx-delete="/characters/{{ character_id }}/features/{{ feature.id }}"
+    <button type="button" class="btn btn--danger" hx-delete="/characters/{{ character_id }}/features/{{ feature.id }}"
             hx-target="#feature-row-{{ feature.id }}" hx-swap="outerHTML" hx-confirm="Delete this feature?">Delete</button>
   </div>
 </li>

@@ -4,9 +4,9 @@
   </div>
   {% if note.body %}<p class="item-effect">{{ note.body }}</p>{% endif %}
   <div class="item-actions">
-    <button type="button" hx-get="/characters/{{ character_id }}/notes/{{ note.id }}/edit"
+    <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/notes/{{ note.id }}/edit"
             hx-target="#note-row-{{ note.id }}" hx-swap="outerHTML">Edit</button>
-    <button type="button" hx-delete="/characters/{{ character_id }}/notes/{{ note.id }}"
+    <button type="button" class="btn btn--danger" hx-delete="/characters/{{ character_id }}/notes/{{ note.id }}"
             hx-target="#note-row-{{ note.id }}" hx-swap="outerHTML" hx-confirm="Delete this note?">Delete</button>
   </div>
 </li>

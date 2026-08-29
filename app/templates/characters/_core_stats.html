@@ -9,6 +9,6 @@
     <div class="stat"><span class="stat-label">Perception</span><span class="stat-value">{{ character.perception if character.perception is not none else "—" }}</span></div>
     <div class="stat"><span class="stat-label">Hero Points</span><span class="stat-value">{{ character.hero_points if character.hero_points is not none else "—" }}</span></div>
   </div>
-  <button type="button" hx-get="/characters/{{ character.id }}/core-stats/edit"
+  <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character.id }}/core-stats/edit"
           hx-target="#core-stats" hx-swap="outerHTML">Edit</button>
 </section>

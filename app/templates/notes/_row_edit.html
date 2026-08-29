@@ -3,14 +3,14 @@
   <textarea name="body" placeholder="Note text">{{ note.body or '' if note else '' }}</textarea>
   <div class="item-actions">
     {% if note %}
-      <button type="button" hx-put="/characters/{{ character_id }}/notes/{{ note.id }}"
+      <button type="button" class="btn btn--primary" hx-put="/characters/{{ character_id }}/notes/{{ note.id }}"
               hx-include="closest li" hx-target="closest li" hx-swap="outerHTML">Save</button>
-      <button type="button" hx-get="/characters/{{ character_id }}/notes/{{ note.id }}"
+      <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/notes/{{ note.id }}"
               hx-target="closest li" hx-swap="outerHTML">Cancel</button>
     {% else %}
-      <button type="button" hx-post="/characters/{{ character_id }}/notes"
+      <button type="button" class="btn btn--primary" hx-post="/characters/{{ character_id }}/notes"
               hx-include="closest li" hx-target="closest li" hx-swap="outerHTML">Add</button>
-      <button type="button" hx-get="/characters/{{ character_id }}/notes/add-trigger"
+      <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/notes/add-trigger"
               hx-target="closest li" hx-swap="outerHTML">Cancel</button>
     {% endif %}
   </div>
