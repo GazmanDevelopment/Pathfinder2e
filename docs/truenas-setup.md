@@ -1,11 +1,11 @@
-# Deploying to TrueNAS SCALE (Phase 2)
+# Deploying to TrueNAS SCALE (Phase 3)
 
 This doc tracks the deployment story alongside the app — it's phase-dependent,
-not a one-time write-up. Phase 2 adds **login via Authelia** (the app is an
-OIDC client; Authelia owns usernames, Argon2 password hashes, and TOTP), so
-this update adds the Authelia service, its config and secrets, and the second
-reverse-proxy route. The app now **requires a signed-in session** to reach any
-character page.
+not a one-time write-up. Phase 2 added **login via Authelia** (local accounts,
+Argon2, TOTP). Phase 3 adds a **second sign-in button, Microsoft Entra**, so
+SSO users can log in too. Both paths resolve to the same `users` row by email,
+so a person can use either. Entra is optional — leave its env unset and only
+the "Sign in with local account" button shows.
 
 ## 1. Prerequisites
 
@@ -127,14 +127,47 @@ absolute dataset paths for the volumes (e.g.
    a login (it's intentionally open for the container healthcheck).
 
 Because real login now exists, it's safe to expose the app through the public
-reverse-proxy route — but note the Phase 2 gate is "any user Authelia
-authenticates," i.e. anyone in `users_database.yml`. Per-user character
-scoping, an app-level allow-list, and the admin role arrive in **Phase 4**.
+reverse-proxy route — but note the gate is "any user a provider authenticates":
+anyone in `users_database.yml`, plus (once Entra is added below) anyone in the
+tenant/accounts you allow there. Per-user character scoping, an app-level
+allow-list, and the admin role arrive in **Phase 4**.
+
+## 7. Add Microsoft Entra (optional — Phase 3)
+
+Adds the "Sign in with Microsoft" button. Skip this section to keep local-only
+login; the button only appears when all three `OIDC_ENTRA_*` vars are set.
+
+1. **Register the app** in Entra: *Microsoft Entra admin center → App
+   registrations → New registration*.
+   - Supported account types: whichever fits your table (single-tenant is
+     simplest and most restrictive).
+   - **Redirect URI** (type *Web*): `https://sheet.example.com/auth/entra/callback`.
+2. **Client secret**: *Certificates & secrets → New client secret*. Copy the
+   **Value** (not the ID) — this is `OIDC_ENTRA_CLIENT_SECRET`.
+3. **Expose the email claim** so the app gets a real address: *Token
+   configuration → Add optional claim → ID → `email`*. Entra's `email` isn't
+   guaranteed otherwise; the app falls back to the account's UPN
+   (`preferred_username`), but adding the claim is more reliable. Whatever it
+   returns **must match the person's Authelia email** so both buttons resolve
+   to the same character list.
+4. **Issuer** is tenant-specific, **not** `common`:
+   `https://login.microsoftonline.com/<tenant-id>/v2.0` — the app validates the
+   token issuer against this, so `common` would fail.
+5. Add to the app's `.env` (alongside the Authelia vars) and redeploy:
+   ```bash
+   OIDC_ENTRA_ISSUER=https://login.microsoftonline.com/<tenant-id>/v2.0
+   OIDC_ENTRA_CLIENT_ID=<application (client) id>
+   OIDC_ENTRA_CLIENT_SECRET=<the secret Value from step 2>
+   ```
+   `docker compose up -d` — the login page now shows both buttons. No Authelia
+   change is needed; Entra talks straight to Microsoft.
+
+Verify: sign in with Microsoft and land on the character list. If the same
+person already logged in via a local account with the same email, they get the
+**same** characters — one `users` row, two ways in.
 
 ## What's deliberately not here yet
 
-- No Microsoft Entra ("Sign in with Microsoft") — that's Phase 3. The login
-  page and routes are already generic over providers, so it's a config add.
 - No per-user scoping / allow-list / admin — Phase 4. Every signed-in user
   currently sees every character.
 

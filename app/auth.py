@@ -35,11 +35,28 @@ def require_login(request: Request) -> dict:
     return user
 
 
+def resolve_email(claims: dict) -> str | None:
+    """Pull a login email out of an id_token's claims, normalised to lowercase.
+
+    Authelia always sends `email`. Microsoft Entra v2.0 often does *not* — it
+    puts the address in `preferred_username` (the UPN), and only emits `email`
+    when the tenant exposes it as an optional claim. Fall back through the
+    usual Entra locations so both providers land on the same address, and
+    lowercase it so `Gareth@x` and `gareth@x` map to one users row.
+    """
+    for key in ("email", "preferred_username", "upn"):
+        value = claims.get(key)
+        if value and "@" in value:
+            return value.strip().lower()
+    return None
+
+
 def upsert_user(db: Session, *, email: str, display_name: str | None, auth_source: str) -> User:
     """Find the user by verified email, or create them.
 
-    Every provider callback funnels through here, so Phase 3's Entra path and
-    Phase 2's Authelia path converge on one users row per email.
+    Every provider callback funnels through here, so the Entra and Authelia
+    paths converge on one users row per email. `email` is expected already
+    normalised (see resolve_email).
     """
     user = db.query(User).filter(User.email == email).one_or_none()
     if user is None:

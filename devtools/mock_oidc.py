@@ -23,9 +23,17 @@ from authlib.jose import JsonWebKey, jwt
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
-ISSUER = "http://localhost:9000"
-CLIENT_ID = "devclient"
-CLIENT_SECRET = "devsecret"
+import os
+
+# Configurable so one file can stand in for either provider in tests. Run a
+# second instance with MOCK_OIDC_PORT=9001 MOCK_OIDC_STYLE=entra to exercise
+# the Entra path, whose id_tokens omit `email`/`email_verified` and carry the
+# address in `preferred_username` instead.
+PORT = int(os.environ.get("MOCK_OIDC_PORT", "9000"))
+ISSUER = os.environ.get("MOCK_OIDC_ISSUER", f"http://localhost:{PORT}")
+STYLE = os.environ.get("MOCK_OIDC_STYLE", "authelia")  # "authelia" | "entra"
+CLIENT_ID = os.environ.get("MOCK_OIDC_CLIENT_ID", "devclient")
+CLIENT_SECRET = os.environ.get("MOCK_OIDC_CLIENT_SECRET", "devsecret")
 DEFAULT_EMAIL = "dev@example.com"
 DEFAULT_NAME = "Dev User"
 
@@ -120,10 +128,14 @@ async def token(request: Request):
         "aud": CLIENT_ID,
         "iat": now,
         "exp": now + 3600,
-        "email": data["email"],
-        "email_verified": True,
         "name": data["name"],
     }
+    if STYLE == "entra":
+        # Entra v2.0: no `email`/`email_verified`, address rides in the UPN.
+        payload["preferred_username"] = data["email"]
+    else:
+        payload["email"] = data["email"]
+        payload["email_verified"] = True
     if data.get("nonce"):
         payload["nonce"] = data["nonce"]
 
@@ -141,4 +153,10 @@ async def token(request: Request):
 
 @app.get("/userinfo")
 def userinfo():
-    return {"sub": DEFAULT_EMAIL, "email": DEFAULT_EMAIL, "email_verified": True, "name": DEFAULT_NAME}
+    info = {"sub": DEFAULT_EMAIL, "name": DEFAULT_NAME}
+    if STYLE == "entra":
+        info["preferred_username"] = DEFAULT_EMAIL
+    else:
+        info["email"] = DEFAULT_EMAIL
+        info["email_verified"] = True
+    return info
