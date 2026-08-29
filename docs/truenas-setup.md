@@ -189,7 +189,16 @@ from `.env`.
 > checkout — so `build: .` fails there with *"open Dockerfile: no such file
 > or directory."* You must build manually over SSH first (§2's `docker
 > build -t pf2e-sheet:latest .`), then paste YAML that references the tag
-> instead of building:
+> instead of building.
+>
+> **Use one Custom App for both services** — confirmed against TrueNAS's own
+> docs, a Custom App accepts a normal multi-service `services:` block just
+> like `docker-compose.yml`, so paste `sheet` and `authelia` together as
+> below rather than creating two separate apps. (Splitting them into two is
+> possible if you'd rather stop/restart/view logs for each independently
+> from the Apps UI, but isn't required — this stack's server-to-server calls
+> go over the public hostnames through the reverse proxy either way, not
+> Docker's internal network, so there's no dependency forcing a split.)
 > ```yaml
 > services:
 >   sheet:
@@ -200,25 +209,33 @@ from `.env`.
 >       DATABASE_URL: "sqlite:////data/sheet.db"
 >       UPLOAD_DIR: "/uploads"
 >       SESSION_SECRET: "<same as .env above>"
->       APP_BASE_URL: "https://sheet.example.com"
->       OIDC_AUTHELIA_ISSUER: "https://auth.example.com"
+>       APP_BASE_URL: "https://pathfinder.huscroft.com.au"
+>       OIDC_AUTHELIA_ISSUER: "https://auth.pathfinder.huscroft.com.au"
 >       OIDC_AUTHELIA_CLIENT_ID: "pf2e-sheet"
 >       OIDC_AUTHELIA_CLIENT_SECRET: "<the PLAINTEXT client secret from step 3>"
 >     volumes:
 >       - /mnt/<pool>/apps/pf2e-sheets/data:/data
 >       - /mnt/<pool>/apps/pf2e-sheets/uploads:/uploads
+>
+>   authelia:
+>     image: authelia/authelia:4.38   # pulled from Docker Hub, not built — never the problem
+>     environment:
+>       TZ: "Australia/Sydney"
+>     ports:
+>       - "9091:9091"   # published, not just internal — see §4
+>     volumes:
+>       - /mnt/<pool>/apps/pf2e-sheets/authelia:/config
 > ```
-> Authelia needs its own Custom App the same way, using `image:
-> authelia/authelia:4.38` (that one was never the problem — it's pulled from
-> Docker Hub, not built) with `/mnt/<pool>/apps/pf2e-sheets/authelia:/config`
-> mounted and `ports: ["9091:9091"]` published — see §4 for why a published
-> port matters here specifically.
 >
 > **The rebuild workflow differs too**: after every `git pull`, re-run
 > `docker build -t pf2e-sheet:latest .` over SSH, then redeploy/restart the
 > Custom App from the UI so it picks up the new image — the Apps UI has no
 > equivalent of `--build`, it never rebuilds on its own. This is the
 > tradeoff for this method; the CLI path above doesn't have this extra step.
+> It also won't appear in TrueNAS's Apps list at all if you use the CLI path
+> instead — that's purely a `docker compose` project the Apps UI doesn't
+> know about, so pick whichever tradeoff (GUI visibility vs. simpler
+> rebuilds) matters more to you before committing to one method.
 
 ## 6. Enrol TOTP and verify
 
