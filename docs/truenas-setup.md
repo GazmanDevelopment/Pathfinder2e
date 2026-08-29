@@ -72,7 +72,11 @@ docker run --rm -v "$PWD/secrets:/keys" authelia/authelia:4.38 \
   authelia crypto pair rsa generate --directory /keys
 mv secrets/private.pem secrets/oidc_issuer_private_key.pem
 
-# A password hash for each player, pasted into users_database.yml
+# A password hash for each player who'll use a LOCAL account. Unlike every
+# other secret in this block, this one is NOT one-time: run it again, and
+# add another entry to users_database.yml, every time a new player joins
+# or an existing one changes their password. Entra/SSO players skip this
+# entirely — their password lives in your Microsoft tenant, not here.
 docker run --rm authelia/authelia:4.38 \
   authelia crypto hash generate argon2 --password 'their-password'
 
@@ -228,8 +232,14 @@ app's `users` table.
   up, before sharing the URL with anyone.**
 - To add a player: as the admin, visit `/admin/users` and add their email.
   It must match the email their provider (Authelia or Entra) will send —
-  same rule as step 7's Entra note. They can then sign in with either
-  provider.
+  same rule as step 7's Entra note.
+  - **If they're using a local account**, this app-side allow-list entry is
+    only half of it — they also need a **separate** entry in Authelia's own
+    `authelia/users_database.yml` (step 3, above) with their own password
+    hash, then a `docker compose restart authelia`. Two systems, two
+    additions, for every new local-account player.
+  - **If they're using Entra/SSO**, the allow-list entry above is the only
+    step — nothing to add on the Authelia side.
 - Someone not on the list gets a plain "your account isn't registered"
   message at `/login` rather than a session — nothing is created for them.
 - The admin sees every character (with an owner label on each); everyone
