@@ -1,9 +1,11 @@
-# Authelia configuration — TEMPLATE for the TrueNAS deployment.
+# Authelia configuration for the TrueNAS deployment.
 #
 # This file cannot be exercised on the dev machine (Authelia runs as a
 # container and Docker isn't installed there); it is written to spec and must
-# be verified on the box. Replace every <PLACEHOLDER> and supply the secrets
-# listed in docs/truenas-setup.md. Swap example.com for your own domain.
+# be verified on the box. Replace every remaining <PLACEHOLDER> (the client
+# secret hash) and supply the secrets listed in docs/truenas-setup.md.
+# Domain is pathfinder.huscroft.com.au, fronted by a Synology DSM reverse
+# proxy — see docs/truenas-setup.md §4 for the reverse-proxy rules.
 
 theme: light
 
@@ -32,9 +34,9 @@ authentication_backend:
 session:
   secret: "@/config/secrets/session_secret"
   cookies:
-    - domain: example.com
-      authelia_url: https://auth.example.com
-      default_redirection_url: https://sheet.example.com
+    - domain: pathfinder.huscroft.com.au
+      authelia_url: https://auth.pathfinder.huscroft.com.au
+      default_redirection_url: https://pathfinder.huscroft.com.au
 
 storage:
   encryption_key: "@/config/secrets/storage_encryption_key"
@@ -66,7 +68,7 @@ identity_providers:
         public: false
         authorization_policy: two_factor
         redirect_uris:
-          - https://sheet.example.com/auth/authelia/callback
+          - https://pathfinder.huscroft.com.au/auth/authelia/callback
         scopes:
           - openid
           - email

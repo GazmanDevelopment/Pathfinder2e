@@ -2,8 +2,7 @@ services:
   sheet:
     build: .
     ports:
-      # Host:container. Container side stays 8000 (matches Dockerfile/uvicorn
-      # and the reverse-proxy's internal sheet:8000 network reference below);
+      # Host:container. Container side stays 8000 (matches Dockerfile/uvicorn);
       # only the host side needs to change if 8000 is already taken on the box.
       - "8101:8000"
     environment:
@@ -13,8 +12,8 @@ services:
       # a session signing secret. See authelia/ for the provider side, and
       # docs/truenas-setup.md for generating the secrets.
       SESSION_SECRET: "${SESSION_SECRET}"
-      APP_BASE_URL: "${APP_BASE_URL}"                 # e.g. https://sheet.example.com
-      OIDC_AUTHELIA_ISSUER: "${OIDC_AUTHELIA_ISSUER}" # e.g. https://auth.example.com
+      APP_BASE_URL: "https://pathfinder.huscroft.com.au"
+      OIDC_AUTHELIA_ISSUER: "https://auth.pathfinder.huscroft.com.au"
       OIDC_AUTHELIA_CLIENT_ID: "${OIDC_AUTHELIA_CLIENT_ID}"
       OIDC_AUTHELIA_CLIENT_SECRET: "${OIDC_AUTHELIA_CLIENT_SECRET}"
       # Microsoft Entra (Phase 3). Leave unset to hide the "Sign in with
@@ -31,11 +30,18 @@ services:
     volumes:
       - ./authelia:/config      # configuration.yml, users_database.yml, secrets, sqlite
     environment:
-      TZ: "Etc/UTC"
-    # No published port: the reverse proxy reaches it on the internal network,
-    # and it must share a parent domain with the app for the session cookie.
-    expose:
-      - "9091"
-# The existing reverse proxy (Traefik/Caddy) fronts BOTH services with TLS:
-#   sheet.<domain> -> sheet:8000
-#   auth.<domain>  -> authelia:9091
+      TZ: "Australia/Sydney"
+    ports:
+      # Published, not just `expose`d: needed whenever the reverse proxy is
+      # NOT itself a container in this compose project — e.g. a separate
+      # device (a Synology/pfSense/OPNsense reverse proxy, or any proxy on a
+      # different host) can only reach this over the network, not Docker's
+      # internal bridge. If your proxy *is* a container alongside this one
+      # (e.g. Traefik in the same compose file), `expose: ["9091"]` would be
+      # enough — but `ports` also works for that case, so it's the safer
+      # default here.
+      - "9091:9091"
+# The reverse proxy (Traefik/Caddy, or a separate-device proxy like Synology
+# DSM's) fronts both services with TLS:
+#   pathfinder.huscroft.com.au      -> <this-host-ip>:8101
+#   auth.pathfinder.huscroft.com.au -> <this-host-ip>:9091
