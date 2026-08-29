@@ -13,6 +13,14 @@ button shows.
 
 - TrueNAS SCALE with the **Apps** service enabled (Docker Compose based —
   Kubernetes engine was dropped after Electric Eel).
+- **Check whether your user needs `sudo` for Docker before starting**: run
+  `docker ps`. If that fails with *"permission denied while trying to
+  connect to the Docker daemon socket,"* your account can't reach the
+  daemon directly (common for a TrueNAS SCALE admin account) — every
+  `docker` and `docker compose` command in this doc from here on needs a
+  `sudo` in front of it. `sudo` only elevates that one command, not
+  anything piped after it or a shell construct wrapped around it — see the
+  `for` loop note in §3 for the one place that distinction actually bites.
 - The dataset **pf2e-sheets** at `HCNAS\apps\pf2e-sheets`, with these
   subdirectories backing the compose volumes:
   - `HCNAS\apps\pf2e-sheets\data` → `/data` (the SQLite DB)
@@ -99,6 +107,8 @@ docker run --rm authelia/authelia:4.38 \
 
 # The app<->Authelia client secret: pick a strong random value, keep the
 # PLAINTEXT for the app's env (step 5), and put its HASH in configuration.yml
+# If docker needs sudo (see Prerequisites), it goes INSIDE the $(...) here:
+# CLIENT_SECRET=$(sudo docker run ...)
 CLIENT_SECRET=$(docker run --rm authelia/authelia:4.38 authelia crypto rand --length 48 | tail -1)
 echo "client secret (app env): $CLIENT_SECRET"
 docker run --rm authelia/authelia:4.38 \
