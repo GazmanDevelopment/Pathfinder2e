@@ -11,8 +11,17 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+  {% set current_user = request.session.get("user") %}
   <nav class="site-nav">
     <a href="/characters">Characters</a>
+    {% if current_user %}
+      <span class="nav-user">
+        <span class="nav-user__name">{{ current_user.display_name or current_user.email }}</span>
+        <form method="post" action="/logout" class="nav-logout">
+          <button type="submit" class="btn btn--ghost">Log out</button>
+        </form>
+      </span>
+    {% endif %}
   </nav>
   <main>
     {% block content %}{% endblock %}

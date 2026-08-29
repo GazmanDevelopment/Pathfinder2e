@@ -10,6 +10,24 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+class User(Base):
+    """A login identity, resolved by verified email from an OIDC provider.
+
+    Phase 2 introduces this table but does not yet link characters to it —
+    per-user scoping, the allow-list, and the admin role arrive in Phase 4.
+    """
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
+    display_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    role: Mapped[str] = mapped_column(String, nullable=False, default="member")
+    auth_source: Mapped[str | None] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
+
+
 class Character(Base):
     __tablename__ = "characters"
 

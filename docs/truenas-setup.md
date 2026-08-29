@@ -1,27 +1,26 @@
-# Deploying to TrueNAS SCALE (Phase 1)
+# Deploying to TrueNAS SCALE (Phase 2)
 
 This doc tracks the deployment story alongside the app — it's phase-dependent,
-not a one-time write-up. Phase 1 adds a real SQLite database and an
-`uploads/` directory for avatars, so this update wires up persistence via the
-**pf2e-sheets** dataset and switches the build to happen directly on the
-TrueNAS box (no container registry involved).
+not a one-time write-up. Phase 2 adds **login via Authelia** (the app is an
+OIDC client; Authelia owns usernames, Argon2 password hashes, and TOTP), so
+this update adds the Authelia service, its config and secrets, and the second
+reverse-proxy route. The app now **requires a signed-in session** to reach any
+character page.
 
 ## 1. Prerequisites
 
 - TrueNAS SCALE with the **Apps** service enabled (Docker Compose based —
   Kubernetes engine was dropped after Electric Eel).
-- The dataset for this app's persistent state already exists:
-
-  **pf2e-sheets**, at `HCNAS\apps\pf2e-sheets`
-
-  Two subdirectories under it back the two compose volumes:
+- The dataset **pf2e-sheets** at `HCNAS\apps\pf2e-sheets`, with these
+  subdirectories backing the compose volumes:
   - `HCNAS\apps\pf2e-sheets\data` → `/data` (the SQLite DB)
   - `HCNAS\apps\pf2e-sheets\uploads` → `/uploads` (avatar images)
+  - `HCNAS\apps\pf2e-sheets\authelia` → `/config` (**new in Phase 2** —
+    Authelia config, secrets, and its own SQLite DB)
 
-  Create them if they don't exist yet:
+  Create the new one if needed:
   ```
-  Storage → Datasets → pf2e-sheets → Add Dataset → name: data
-  Storage → Datasets → pf2e-sheets → Add Dataset → name: uploads
+  Storage → Datasets → pf2e-sheets → Add Dataset → name: authelia
   ```
 
 ## 2. Get the repo onto the box and build there
@@ -29,84 +28,114 @@ TrueNAS box (no container registry involved).
 No registry, no build step on the dev machine — build the image directly on
 the TrueNAS box itself.
 
-SSH into the box, then:
-
 ```bash
 cd /mnt/<pool>/apps/pf2e-sheets   # or wherever you keep app checkouts
 git clone https://github.com/<you>/Pathfinder2e.git   # first time
-# or, on later phases:
-cd Pathfinder2e && git pull
+cd Pathfinder2e && git pull                            # on later phases
 
 docker build -t pf2e-sheet:latest .
 ```
 
-`docker-compose.yml` already points at `build: .`, so `docker compose build`
-(step 3) does this same on-box build for you — the manual `docker build`
-above is just for a quick sanity check while iterating.
+`docker-compose.yml` points at `build: .`, so `docker compose build` does this
+same on-box build for you — the manual `docker build` is just a sanity check.
 
-## 3a. Deploy via the Apps UI — Custom App (YAML)
+## 3. Generate Authelia's secrets and users
 
-1. **Apps → Discover Apps → Custom App** (top right, "Install via YAML" /
-   "Custom App").
-2. Paste a compose spec based on this repo's [docker-compose.yml](../docker-compose.yml):
-   ```yaml
-   services:
-     sheet:
-       build: .
-       ports:
-         - "8000:8000"
-       environment:
-         DATABASE_URL: "sqlite:////data/sheet.db"
-         UPLOAD_DIR: "/uploads"
-       volumes:
-         - /mnt/<pool>/apps/pf2e-sheets/data:/data
-         - /mnt/<pool>/apps/pf2e-sheets/uploads:/uploads
-   ```
-   (Swap `<pool>` for your actual pool name — the dataset path above is
-   `HCNAS\apps\pf2e-sheets`.)
-3. Give the app a name (e.g. `pf2e-sheets`) and deploy.
-4. Confirm it's running: **Apps → pf2e-sheets** should show the container as
-   *Running*, and `http://<truenas-ip>:8000/healthz` should return
-   `{"status":"ok"}`.
+The repo ships `authelia/` as **templates**. Real secrets and password hashes
+are generated on the box and are git-ignored — never commit them.
 
-## 3b. Alternative — Compose stack alongside other services
+```bash
+cd /mnt/<pool>/apps/pf2e-sheets/Pathfinder2e/authelia
+mkdir -p secrets
 
-If you're already managing other containers on the box via a Compose file
-(e.g. through the CLI or Portainer), add this app as another service in that
-stack rather than through the Apps UI:
+# Random secrets (one per file)
+for s in jwt_secret session_secret storage_encryption_key oidc_hmac_secret; do
+  docker run --rm authelia/authelia:4.38 authelia crypto rand --length 64 \
+    | tail -1 > secrets/$s
+done
+
+# OIDC issuer signing key (RSA)
+docker run --rm -v "$PWD/secrets:/keys" authelia/authelia:4.38 \
+  authelia crypto pair rsa generate --directory /keys
+mv secrets/private.pem secrets/oidc_issuer_private_key.pem
+
+# A password hash for each player, pasted into users_database.yml
+docker run --rm authelia/authelia:4.38 \
+  authelia crypto hash generate argon2 --password 'their-password'
+
+# The app<->Authelia client secret: pick a strong random value, keep the
+# PLAINTEXT for the app's env (step 5), and put its HASH in configuration.yml
+CLIENT_SECRET=$(docker run --rm authelia/authelia:4.38 authelia crypto rand --length 48 | tail -1)
+echo "client secret (app env): $CLIENT_SECRET"
+docker run --rm authelia/authelia:4.38 \
+  authelia crypto hash generate pbkdf2 --variant sha512 --password "$CLIENT_SECRET"
+```
+
+Then edit the templates (swap `example.com` for your domain throughout):
+- `authelia/configuration.yml` — set the `session.cookies` domain/URLs, the
+  client `redirect_uris`, and paste the **client-secret hash**.
+- `authelia/users_database.yml` — one entry per player with their argon2 hash
+  and real email. **The email must match** what you'll allow-list in Phase 4.
+
+## 4. Reverse proxy — two routes under one parent domain
+
+The session cookie is scoped to the parent domain, so the app and Authelia
+must share it. Add both routes to your existing Traefik/Caddy (Let's Encrypt
+as usual — the proxy terminates TLS and forwards plain HTTP):
+
+```
+sheet.<yourdomain>  →  sheet:8000
+auth.<yourdomain>   →  authelia:9091
+```
+
+## 5. Deploy
+
+Set the app's environment (a `.env` beside the compose file is git-ignored):
+
+```bash
+# .env
+SESSION_SECRET=<run: openssl rand -hex 32>
+APP_BASE_URL=https://sheet.example.com
+OIDC_AUTHELIA_ISSUER=https://auth.example.com
+OIDC_AUTHELIA_CLIENT_ID=pf2e-sheet
+OIDC_AUTHELIA_CLIENT_SECRET=<the PLAINTEXT client secret from step 3>
+```
+
+Then bring the stack up (app + Authelia together):
 
 ```bash
 cd /mnt/<pool>/apps/pf2e-sheets/Pathfinder2e
 docker compose up -d --build
 ```
 
-## 4. Front it with the reverse proxy
+The compose file mounts `./data`, `./uploads`, and `./authelia` from the
+dataset. If you deploy via the Apps UI **Custom App (YAML)** instead, use
+absolute dataset paths for the volumes (e.g.
+`/mnt/<pool>/apps/pf2e-sheets/authelia:/config`) and set the same env there.
 
-Point your existing Traefik/Caddy instance at the container's port 8000 and
-attach the usual Let's Encrypt config, e.g. a route for
-`sheet.<yourdomain>` → `http://<truenas-ip>:8000`. No app-side TLS config is
-needed — the proxy terminates TLS and forwards plain HTTP.
+## 6. Enrol TOTP and verify
 
-**Stay LAN-only for now.** Phase 1 has no login (that's Phase 2/3) — anyone
-who can reach the app can create, edit, and delete characters and upload
-files. Don't wire up the public route through the reverse proxy until auth
-lands; keep this on an internal-only route or skip the proxy entirely and
-hit `http://<truenas-ip>:8000` directly on the LAN.
+1. Visit `https://sheet.example.com` → you're bounced to the app's `/login`.
+2. Click **Sign in with local account** → Authelia asks for the password, then
+   to **enrol an authenticator app** (TOTP). Scan the QR with your app.
+3. After the second factor you land back on the character list, signed in —
+   the nav shows your name and a **Log out** button.
+4. `docker compose restart` and reload — you should still be signed in (the
+   session cookie is signed with `SESSION_SECRET`) and your data intact
+   (proves the three volumes are mounted).
+5. `http://<truenas-ip>:8000/healthz` still returns `{"status":"ok"}` without
+   a login (it's intentionally open for the container healthcheck).
 
-## 5. Verify
-
-- `http://<truenas-ip>:8000/characters` lists/creates characters and opens a
-  full sheet.
-- `http://<truenas-ip>:8000/healthz` returns `{"status":"ok"}`.
-- Create a character, add an avatar, add a spell/equipment/feature/note,
-  then restart the container (`docker compose restart`) and confirm
-  everything is still there — proves the two volumes are actually mounted,
-  not just that the container runs.
+Because real login now exists, it's safe to expose the app through the public
+reverse-proxy route — but note the Phase 2 gate is "any user Authelia
+authenticates," i.e. anyone in `users_database.yml`. Per-user character
+scoping, an app-level allow-list, and the admin role arrive in **Phase 4**.
 
 ## What's deliberately not here yet
 
-- No env vars for OIDC — auth arrives in Phase 2/3.
-- No Authelia service — added alongside local login in Phase 2.
+- No Microsoft Entra ("Sign in with Microsoft") — that's Phase 3. The login
+  page and routes are already generic over providers, so it's a config add.
+- No per-user scoping / allow-list / admin — Phase 4. Every signed-in user
+  currently sees every character.
 
-See the root [CLAUDE.md](../CLAUDE.md) for the full build order and the
-eventual compose shape once those phases land.
+See the root [CLAUDE.md](../CLAUDE.md) for the full build order.

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Sign in — Character Sheet{% endblock %}
+
+{% block content %}
+  <section class="sheet-section login-card">
+    <h1>Character Sheet</h1>
+    <p class="login-sub">Sign in to reach your table's characters.</p>
+
+    {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+
+    {% if providers %}
+      <div class="login-providers">
+        {% for provider in providers %}
+          <a class="btn btn--primary login-provider-btn"
+             href="/auth/{{ provider.name }}/login?next={{ next | urlencode }}">
+            Sign in with {{ provider.label }}
+          </a>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="login-empty">No sign-in providers are configured. Set the
+        <code>OIDC_*</code> environment variables to enable login.</p>
+    {% endif %}
+  </section>
+{% endblock %}

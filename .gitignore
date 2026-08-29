@@ -5,3 +5,11 @@ venv/
 *.db
 /data/
 /uploads/
+
+# Authelia runtime state and real secrets — only the config templates are
+# tracked. Never commit generated secrets, the hashed users file, or its DB.
+/authelia/secrets/*
+!/authelia/secrets/README.md
+/authelia/db.sqlite3
+/authelia/notification.txt
+.env
