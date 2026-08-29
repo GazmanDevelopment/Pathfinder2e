@@ -1,0 +1,10 @@
+{% set character_id = character.id %}
+<section class="sheet-section">
+  <h2>Ancestry / Order / Class Features</h2>
+  <ul id="feature-list" class="item-list">
+    {% for feature in character.features %}
+      {% include "features/_row.html" %}
+    {% endfor %}
+    {% include "features/_add_trigger.html" %}
+  </ul>
+</section>

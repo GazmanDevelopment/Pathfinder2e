@@ -1,0 +1,26 @@
+<li id="{{ 'spell-row-' ~ spell.id if spell else 'spell-row-new' }}" class="item-row item-row--card item-row--edit">
+  <div class="field-grid">
+    <input type="text" name="name" value="{{ spell.name if spell else '' }}" placeholder="Spell name" required>
+    <input type="text" name="rank" value="{{ spell.rank or '' if spell else '' }}" placeholder="Rank (e.g. Cantrip, 3rd)">
+    <input type="text" name="action_cost" value="{{ spell.action_cost or '' if spell else '' }}" placeholder="Action cost">
+    <input type="text" name="range" value="{{ spell.range or '' if spell else '' }}" placeholder="Range">
+    <input type="text" name="uses" value="{{ spell.uses or '' if spell else '' }}" placeholder="Uses / slots">
+    <input type="text" name="flags" value="{{ spell.flags or '' if spell else '' }}" placeholder="Flags">
+    <input type="number" name="attack_bonus" value="{{ spell.attack_bonus if spell and spell.attack_bonus is not none else '' }}" placeholder="Attack bonus">
+    <input type="text" name="damage_formula" value="{{ spell.damage_formula or '' if spell else '' }}" placeholder="Damage (e.g. 2d4+2)">
+  </div>
+  <textarea name="effect" placeholder="Effect">{{ spell.effect or '' if spell else '' }}</textarea>
+  <div class="item-actions">
+    {% if spell %}
+      <button type="button" hx-put="/characters/{{ character_id }}/spells/{{ spell.id }}"
+              hx-include="closest li" hx-target="closest li" hx-swap="outerHTML">Save</button>
+      <button type="button" hx-get="/characters/{{ character_id }}/spells/{{ spell.id }}"
+              hx-target="closest li" hx-swap="outerHTML">Cancel</button>
+    {% else %}
+      <button type="button" hx-post="/characters/{{ character_id }}/spells"
+              hx-include="closest li" hx-target="closest li" hx-swap="outerHTML">Add</button>
+      <button type="button" hx-get="/characters/{{ character_id }}/spells/add-trigger"
+              hx-target="closest li" hx-swap="outerHTML">Cancel</button>
+    {% endif %}
+  </div>
+</li>

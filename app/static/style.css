@@ -1,6 +1,223 @@
 body {
   font-family: system-ui, sans-serif;
   max-width: 60rem;
-  margin: 2rem auto;
+  margin: 0 auto 3rem;
   padding: 0 1rem;
+  color: #1a1a1a;
+}
+
+.site-nav {
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 1.5rem;
+}
+.site-nav a {
+  text-decoration: none;
+  color: #2255aa;
+  font-weight: 600;
+}
+
+h1, h2 {
+  margin-top: 0;
+}
+
+.sheet-section {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+.sheet-section--edit {
+  border-color: #2255aa;
+  background: #f5f8ff;
+}
+.sheet-section--avatar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.avatar-main {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #eee;
+}
+.avatar-thumb {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: #eee;
+}
+.avatar-upload-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.form-error {
+  color: #b00020;
+  width: 100%;
+}
+
+.header-summary, .header-details {
+  color: #555;
+}
+.header-details span {
+  margin-right: 1rem;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  padding: 0.5rem;
+}
+.stat-label {
+  font-size: 0.75rem;
+  color: #777;
+  text-transform: uppercase;
+}
+.stat-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.stat-sub {
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.field-grid label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+  color: #555;
+}
+.field-grid input, .field-grid textarea {
+  font-size: 1rem;
+  padding: 0.3rem;
+}
+.ability-grid fieldset {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-end;
+  border: 1px solid #eee;
+  border-radius: 4px;
+}
+.ability-grid fieldset label {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.8rem;
+}
+.ability-grid fieldset input {
+  width: 4rem;
+}
+
+textarea {
+  width: 100%;
+  min-height: 3rem;
+  box-sizing: border-box;
+  margin-bottom: 0.5rem;
+}
+
+.item-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.item-row {
+  border-bottom: 1px solid #eee;
+  padding: 0.5rem 0;
+}
+.item-row--compact {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+.item-row--compact input {
+  width: 100%;
+  box-sizing: border-box;
+}
+.item-row--card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.item-row--edit {
+  background: #f5f8ff;
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+.item-row--add button {
+  background: none;
+  border: 1px dashed #999;
+  color: #555;
+  width: 100%;
+  padding: 0.4rem;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.item-field--name {
+  font-weight: 600;
+}
+.item-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.item-effect {
+  color: #444;
+  margin: 0;
+  white-space: pre-wrap;
+}
+.tag {
+  background: #eef2fa;
+  border-radius: 3px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.8rem;
+  color: #333;
+}
+.item-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.item-actions button {
+  cursor: pointer;
+}
+
+.checkbox-field {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.create-character-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.character-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }

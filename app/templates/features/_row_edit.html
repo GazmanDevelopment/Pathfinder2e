@@ -1,0 +1,29 @@
+<li id="{{ 'feature-row-' ~ feature.id if feature else 'feature-row-new' }}" class="item-row item-row--card item-row--edit">
+  <div class="field-grid">
+    <input type="text" name="name" value="{{ feature.name if feature else '' }}" placeholder="Feature name" required>
+    <input type="text" name="source" value="{{ feature.source or '' if feature else '' }}" list="feature-source-suggestions" placeholder="Source">
+    <input type="number" name="level_gained" value="{{ feature.level_gained if feature and feature.level_gained is not none else '' }}" placeholder="Level gained">
+  </div>
+  <datalist id="feature-source-suggestions">
+    <option value="Ancestry">
+    <option value="Heritage">
+    <option value="Background">
+    <option value="Class">
+    <option value="Feat">
+    <option value="Archetype">
+  </datalist>
+  <textarea name="effect" placeholder="Effect">{{ feature.effect or '' if feature else '' }}</textarea>
+  <div class="item-actions">
+    {% if feature %}
+      <button type="button" hx-put="/characters/{{ character_id }}/features/{{ feature.id }}"
+              hx-include="closest li" hx-target="closest li" hx-swap="outerHTML">Save</button>
+      <button type="button" hx-get="/characters/{{ character_id }}/features/{{ feature.id }}"
+              hx-target="closest li" hx-swap="outerHTML">Cancel</button>
+    {% else %}
+      <button type="button" hx-post="/characters/{{ character_id }}/features"
+              hx-include="closest li" hx-target="closest li" hx-swap="outerHTML">Add</button>
+      <button type="button" hx-get="/characters/{{ character_id }}/features/add-trigger"
+              hx-target="closest li" hx-swap="outerHTML">Cancel</button>
+    {% endif %}
+  </div>
+</li>

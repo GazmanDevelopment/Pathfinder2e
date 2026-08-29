@@ -1,0 +1,12 @@
+<li id="note-row-{{ note.id }}" class="item-row item-row--card">
+  <div class="item-summary">
+    <strong>{{ note.title or "(untitled)" }}</strong>
+  </div>
+  {% if note.body %}<p class="item-effect">{{ note.body }}</p>{% endif %}
+  <div class="item-actions">
+    <button type="button" hx-get="/characters/{{ character_id }}/notes/{{ note.id }}/edit"
+            hx-target="#note-row-{{ note.id }}" hx-swap="outerHTML">Edit</button>
+    <button type="button" hx-delete="/characters/{{ character_id }}/notes/{{ note.id }}"
+            hx-target="#note-row-{{ note.id }}" hx-swap="outerHTML" hx-confirm="Delete this note?">Delete</button>
+  </div>
+</li>

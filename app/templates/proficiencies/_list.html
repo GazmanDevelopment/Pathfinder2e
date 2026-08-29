@@ -1,0 +1,17 @@
+{% set character_id = character.id %}
+<section class="sheet-section">
+  <h2>Saves &amp; Skills</h2>
+  <datalist id="rank-suggestions">
+    <option value="Untrained">
+    <option value="Trained">
+    <option value="Expert">
+    <option value="Master">
+    <option value="Legendary">
+  </datalist>
+  <ul id="proficiency-list" class="item-list">
+    {% for prof in character.proficiencies %}
+      {% include "proficiencies/_row.html" %}
+    {% endfor %}
+    {% include "proficiencies/_add_trigger.html" %}
+  </ul>
+</section>

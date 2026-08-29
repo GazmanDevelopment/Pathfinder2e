@@ -1,0 +1,17 @@
+<li id="{{ 'note-row-' ~ note.id if note else 'note-row-new' }}" class="item-row item-row--card item-row--edit">
+  <input type="text" name="title" value="{{ note.title or '' if note else '' }}" placeholder="Title (optional)">
+  <textarea name="body" placeholder="Note text">{{ note.body or '' if note else '' }}</textarea>
+  <div class="item-actions">
+    {% if note %}
+      <button type="button" hx-put="/characters/{{ character_id }}/notes/{{ note.id }}"
+              hx-include="closest li" hx-target="closest li" hx-swap="outerHTML">Save</button>
+      <button type="button" hx-get="/characters/{{ character_id }}/notes/{{ note.id }}"
+              hx-target="closest li" hx-swap="outerHTML">Cancel</button>
+    {% else %}
+      <button type="button" hx-post="/characters/{{ character_id }}/notes"
+              hx-include="closest li" hx-target="closest li" hx-swap="outerHTML">Add</button>
+      <button type="button" hx-get="/characters/{{ character_id }}/notes/add-trigger"
+              hx-target="closest li" hx-swap="outerHTML">Cancel</button>
+    {% endif %}
+  </div>
+</li>

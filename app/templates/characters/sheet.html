@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}{{ character.name }}{% endblock %}
+
+{% block content %}
+  {% include "characters/_avatar.html" %}
+  {% include "characters/_header.html" %}
+  {% include "characters/_core_stats.html" %}
+  {% include "characters/_ability_scores.html" %}
+  {% include "proficiencies/_list.html" %}
+  {% include "spells/_list.html" %}
+  {% include "equipment/_list.html" %}
+  {% include "features/_list.html" %}
+  {% include "notes/_list.html" %}
+{% endblock %}

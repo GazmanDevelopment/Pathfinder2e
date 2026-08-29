@@ -1,0 +1,19 @@
+<li id="spell-row-{{ spell.id }}" class="item-row item-row--card">
+  <div class="item-summary">
+    <strong>{{ spell.name }}</strong>
+    {% if spell.rank %}<span class="tag">{{ spell.rank }}</span>{% endif %}
+    {% if spell.action_cost %}<span class="tag">{{ spell.action_cost }}</span>{% endif %}
+    {% if spell.range %}<span class="tag">Range {{ spell.range }}</span>{% endif %}
+    {% if spell.uses %}<span class="tag">Uses {{ spell.uses }}</span>{% endif %}
+    {% if spell.attack_bonus is not none %}<span class="tag">Atk {{ "%+d"|format(spell.attack_bonus) }}</span>{% endif %}
+    {% if spell.damage_formula %}<span class="tag">Dmg {{ spell.damage_formula }}</span>{% endif %}
+    {% if spell.flags %}<span class="tag">{{ spell.flags }}</span>{% endif %}
+  </div>
+  {% if spell.effect %}<p class="item-effect">{{ spell.effect }}</p>{% endif %}
+  <div class="item-actions">
+    <button type="button" hx-get="/characters/{{ character_id }}/spells/{{ spell.id }}/edit"
+            hx-target="#spell-row-{{ spell.id }}" hx-swap="outerHTML">Edit</button>
+    <button type="button" hx-delete="/characters/{{ character_id }}/spells/{{ spell.id }}"
+            hx-target="#spell-row-{{ spell.id }}" hx-swap="outerHTML" hx-confirm="Delete this spell?">Delete</button>
+  </div>
+</li>

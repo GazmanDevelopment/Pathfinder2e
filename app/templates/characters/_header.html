@@ -1,0 +1,18 @@
+<section id="character-header" class="sheet-section">
+  <div class="header-fields">
+    <h1>{{ character.name }}</h1>
+    <p class="header-summary">
+      {{ character.ancestry or "" }}
+      {{ character.character_class or "" }}
+      {{ "· Level " ~ character.level if character.level is not none else "" }}
+    </p>
+    <p class="header-details">
+      {% if character.size %}<span>Size: {{ character.size }}</span>{% endif %}
+      {% if character.speed %}<span>Speed: {{ character.speed }}</span>{% endif %}
+      {% if character.languages %}<span>Languages: {{ character.languages }}</span>{% endif %}
+      {% if character.alignment %}<span>Alignment: {{ character.alignment }}</span>{% endif %}
+    </p>
+  </div>
+  <button type="button" hx-get="/characters/{{ character.id }}/header/edit"
+          hx-target="#character-header" hx-swap="outerHTML">Edit</button>
+</section>

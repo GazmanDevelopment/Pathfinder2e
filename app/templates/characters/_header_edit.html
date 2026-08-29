@@ -1,0 +1,18 @@
+<section id="character-header" class="sheet-section sheet-section--edit">
+  <form id="header-form" hx-put="/characters/{{ character.id }}/header"
+        hx-target="#character-header" hx-swap="outerHTML" class="field-grid">
+    <label>Name <input type="text" name="name" value="{{ character.name }}" required></label>
+    <label>Ancestry <input type="text" name="ancestry" value="{{ character.ancestry or '' }}"></label>
+    <label>Class <input type="text" name="character_class" value="{{ character.character_class or '' }}"></label>
+    <label>Level <input type="number" name="level" value="{{ character.level if character.level is not none else '' }}"></label>
+    <label>Size <input type="text" name="size" value="{{ character.size or '' }}"></label>
+    <label>Speed <input type="text" name="speed" value="{{ character.speed or '' }}"></label>
+    <label>Languages <input type="text" name="languages" value="{{ character.languages or '' }}"></label>
+    <label>Alignment <input type="text" name="alignment" value="{{ character.alignment or '' }}"></label>
+    <div class="item-actions">
+      <button type="submit">Save</button>
+      <button type="button" hx-get="/characters/{{ character.id }}/header"
+              hx-target="#character-header" hx-swap="outerHTML">Cancel</button>
+    </div>
+  </form>
+</section>

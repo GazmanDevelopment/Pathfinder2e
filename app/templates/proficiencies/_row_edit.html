@@ -1,0 +1,18 @@
+<li id="{{ 'proficiency-row-' ~ prof.id if prof else 'proficiency-row-new' }}" class="item-row item-row--compact item-row--edit">
+  <input type="text" name="name" value="{{ prof.name if prof else '' }}" placeholder="Skill or Save name" required>
+  <input type="text" name="rank" value="{{ prof.rank or '' if prof else '' }}" list="rank-suggestions" placeholder="Rank">
+  <input type="number" name="bonus" value="{{ prof.bonus if prof and prof.bonus is not none else '' }}" placeholder="Bonus">
+  <span class="item-actions">
+    {% if prof %}
+      <button type="button" hx-put="/characters/{{ character_id }}/proficiencies/{{ prof.id }}"
+              hx-include="closest li" hx-target="closest li" hx-swap="outerHTML">Save</button>
+      <button type="button" hx-get="/characters/{{ character_id }}/proficiencies/{{ prof.id }}"
+              hx-target="closest li" hx-swap="outerHTML">Cancel</button>
+    {% else %}
+      <button type="button" hx-post="/characters/{{ character_id }}/proficiencies"
+              hx-include="closest li" hx-target="closest li" hx-swap="outerHTML">Add</button>
+      <button type="button" hx-get="/characters/{{ character_id }}/proficiencies/add-trigger"
+              hx-target="closest li" hx-swap="outerHTML">Cancel</button>
+    {% endif %}
+  </span>
+</li>
