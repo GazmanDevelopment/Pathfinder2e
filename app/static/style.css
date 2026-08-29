@@ -359,6 +359,68 @@ a:hover {
   font-variant-numeric: tabular-nums;
 }
 
+/* --- HP with inline adjust ------------------------------------------------ */
+
+/* Needs room for two touch targets either side of the value. */
+.stat--hp {
+  grid-column: span 2;
+  padding-bottom: 0.5rem;
+}
+
+.hp-adjust {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.hp-adjust .stat-value {
+  flex: 1 1 auto;
+  text-align: center;
+  min-width: 0;
+}
+
+/* 44px minimum — the usual comfortable touch target. */
+.btn-step {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--gold-pale);
+  border-radius: var(--radius);
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background-color 0.1s ease, border-color 0.1s ease, transform 0.06s ease;
+}
+
+.btn-step:hover {
+  background: var(--gold-wash);
+  border-color: var(--gold);
+}
+
+.btn-step:active {
+  background: var(--gold);
+  border-color: #8f6d2c;
+  color: #fffaf0;
+  transform: scale(0.94);
+}
+
+.btn-step:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
 /* --------------------------------------------------------------------------
    Forms
    -------------------------------------------------------------------------- */
@@ -742,6 +804,11 @@ textarea {
   .sheet-section--avatar {
     border-right: none;
     border-bottom: 1px solid var(--gold-pale);
+  }
+
+  /* Give HP the full row on a phone so the taps stay comfortably large. */
+  .stat--hp {
+    grid-column: 1 / -1;
   }
 
   #character-header {

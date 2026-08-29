@@ -95,6 +95,26 @@ def show_core_stats(request: Request, character: Character = Depends(get_charact
     )
 
 
+@router.post("/{character_id}/hp/adjust")
+def adjust_hp(
+    request: Request,
+    character: Character = Depends(get_character_or_404),
+    db: Session = Depends(get_db),
+    delta: int = Form(...),
+):
+    """Nudge current HP by delta.
+
+    Not clamped to 0 or to hp_max on purpose: this is a record of what the
+    table decided, not a rules engine. Unset HP is treated as 0 so the first
+    tap has somewhere to start from.
+    """
+    character.hp_current = (character.hp_current or 0) + delta
+    db.commit()
+    return templates.TemplateResponse(
+        "characters/_core_stats.html", {"request": request, "character": character}
+    )
+
+
 @router.get("/{character_id}/core-stats/edit")
 def edit_core_stats(request: Request, character: Character = Depends(get_character_or_404)):
     return templates.TemplateResponse(
