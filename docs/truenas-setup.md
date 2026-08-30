@@ -13,17 +13,19 @@ button shows.
 
 - TrueNAS SCALE with the **Apps** service enabled (Docker Compose based —
   Kubernetes engine was dropped after Electric Eel).
-- The dataset **pf2e-sheets** at `HCNAS\apps\pf2e-sheets`, with these
-  subdirectories backing the compose volumes:
-  - `HCNAS\apps\pf2e-sheets\data` → `/data` (the SQLite DB)
-  - `HCNAS\apps\pf2e-sheets\uploads` → `/uploads` (avatar images)
-  - `HCNAS\apps\pf2e-sheets\authelia` → `/config` (**new in Phase 2** —
-    Authelia config, secrets, and its own SQLite DB)
-
-  Create the new one if needed:
-  ```
-  Storage → Datasets → pf2e-sheets → Add Dataset → name: authelia
-  ```
+- The dataset **pf2e-sheets** at `HCNAS\apps\pf2e-sheets` — step 2 clones the
+  repo directly onto it, at `HCNAS\apps\pf2e-sheets\Pathfinder2e`. The
+  persistent volumes (`data`, `uploads`, `authelia`) live as plain
+  subdirectories **inside that checkout**, not as separate child datasets —
+  `Pathfinder2e\data` → `/data`, `Pathfinder2e\uploads` → `/uploads`,
+  `Pathfinder2e\authelia` → `/config`. All three still live on the
+  `pf2e-sheets` dataset (the checkout is just a subdirectory of it), so a
+  snapshot of `pf2e-sheets` backs up all of it together — you don't get
+  independent per-volume snapshot granularity this way, but it means the
+  path a container mounts and the path you actually edited files in (step 3)
+  are always the same directory. Getting those two out of sync is a real,
+  easy mistake — it's exactly what makes Authelia start with no config,
+  silently generate a default, and immediately exit.
 
 ## 2. Get the repo onto the box and build there
 
@@ -214,8 +216,8 @@ from `.env`.
 >       OIDC_AUTHELIA_CLIENT_ID: "pf2e-sheet"
 >       OIDC_AUTHELIA_CLIENT_SECRET: "<the PLAINTEXT client secret from step 3>"
 >     volumes:
->       - /mnt/<pool>/apps/pf2e-sheets/data:/data
->       - /mnt/<pool>/apps/pf2e-sheets/uploads:/uploads
+>       - /mnt/<pool>/apps/pf2e-sheets/Pathfinder2e/data:/data
+>       - /mnt/<pool>/apps/pf2e-sheets/Pathfinder2e/uploads:/uploads
 >
 >   authelia:
 >     image: authelia/authelia:4.38   # pulled from Docker Hub, not built — never the problem
@@ -224,7 +226,12 @@ from `.env`.
 >     ports:
 >       - "9091:9091"   # published, not just internal — see §4
 >     volumes:
->       - /mnt/<pool>/apps/pf2e-sheets/authelia:/config
+>       # Must be the checkout's own authelia/ — the same directory step 3
+>       # generated secrets and edited configuration.yml in. Point this
+>       # anywhere else and Authelia finds an empty directory, silently
+>       # writes a default config, and exits — no config error, just a
+>       # container that won't stay up.
+>       - /mnt/<pool>/apps/pf2e-sheets/Pathfinder2e/authelia:/config
 > ```
 >
 > **The rebuild workflow differs too**: after every `git pull`, re-run
