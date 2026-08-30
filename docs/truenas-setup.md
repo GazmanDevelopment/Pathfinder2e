@@ -251,6 +251,11 @@ from `.env`.
 
 ## 6. Enrol TOTP and verify
 
+Enrolling TOTP (or WebAuthn) sends a confirmation link by email — set up
+**real email delivery first** (§9, below) or this step has nowhere to send
+that link. The filesystem notifier this repo ships by default only writes
+to a local file on the box that a player has no way to see.
+
 1. Visit `https://sheet.example.com` → you're bounced to the app's `/login`.
 2. Click **Sign in with local account** → Authelia asks for the password, then
    to **enrol an authenticator app** (TOTP). Scan the QR with your app.
@@ -330,5 +335,52 @@ app's `users` table.
   else sees only their own. There's currently no UI to promote another
   account to admin or remove someone from the list — just the one bootstrap
   admin and the add-email form.
+
+## 9. Email delivery for TOTP/WebAuthn (SendGrid)
+
+TOTP and WebAuthn registration, and password resets, all work by emailing
+the player a confirmation link. The default `authelia/configuration.yml`
+ships with a **filesystem notifier** (`notifier.filesystem`), which writes
+that link to a file on the box instead of sending it — fine for a solo dev
+test, useless the moment a real player needs to enrol. Do this before §6.
+
+**Why not just use your M365 mailbox directly**: SMTP AUTH (the protocol
+Authelia's notifier needs) is disabled by default on essentially all M365
+tenants since ~2020. You *can* re-enable it per-mailbox, but it's gated by
+a tenant-wide **Security Defaults** toggle first — turning that off drops
+your tenant's baseline MFA enforcement, not just for this one mailbox,
+unless you already have Conditional Access covering that job. Not a
+trade-off to make for one automated app mailbox. SendGrid's free tier
+(100 emails/day) comfortably covers a handful of players and doesn't touch
+your tenant's security posture at all.
+
+**Set up SendGrid** (sendgrid.com):
+1. **Settings → Sender Authentication → Verify a Single Sender** — the
+   address you'll send from (e.g. `authelia@huscroft.com.au` — must be on
+   your **root** domain where a real mailbox exists to receive SendGrid's
+   confirmation email; `pathfinder.huscroft.com.au` is only web routing for
+   the app, nothing can receive mail there). Click the link SendGrid emails
+   to that address.
+2. **Settings → API Keys → Create API Key** — Restricted Access, scoped to
+   just **Mail Send**. Copy it now; SendGrid only shows it once.
+   (Single Sender Verification is enough to start sending; **Domain
+   Authentication** — DNS records for SPF/DKIM — is worth adding later for
+   better deliverability, but isn't required at this volume.)
+
+**Generate the secret and update the config:**
+```bash
+cd /mnt/<pool>/apps/pf2e-sheets/Pathfinder2e/authelia
+echo -n '<your SendGrid API key>' > secrets/smtp_password
+```
+`authelia/configuration.yml`'s `notifier.smtp` block is already set up for
+SendGrid (`smtp.sendgrid.net:587`, username literally `apikey` — that's not
+a placeholder, every SendGrid account uses that same literal string, the
+API key is the actual credential). Just confirm `sender:` matches the
+address you verified in step 1 above, then redeploy.
+
+Verify: trigger a TOTP or WebAuthn enrolment (§6) and confirm the email
+actually lands — check spam the first time, since a freshly Single-Sender-
+Verified address (as opposed to a fully domain-authenticated one) can land
+there initially on some providers.
 
 See the root [CLAUDE.md](../CLAUDE.md) for the full build order.

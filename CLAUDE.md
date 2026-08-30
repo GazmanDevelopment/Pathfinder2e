@@ -118,9 +118,11 @@ stack alongside your other services.
 
 - **Persistence:** SQLite file + Authelia config + `uploads/` all on a dataset —
   snapshot it and backups/rollback come free from ZFS.
-- **Secrets:** Entra client secret, Authelia JWT/session/storage keys, and (Phase
-  8, optional) an Anthropic API key → env or a secrets file on the dataset.
-  Never in the image.
+- **Secrets:** Entra client secret, Authelia JWT/session/storage keys, an SMTP
+  credential for Authelia's notifier (TOTP/WebAuthn/reset emails need real
+  delivery — the filesystem notifier only writes to a local file no player
+  can see), and (Phase 8, optional) an Anthropic API key → env or a secrets
+  file on the dataset. Never in the image.
 - **`authelia/configuration.yml` and `authelia/users_database.yml` are
   git-tracked templates, but the deployed box's real copies have actual
   secrets, the real domain, and the RSA issuer key hand-edited in.** The box
