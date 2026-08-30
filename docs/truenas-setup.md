@@ -336,7 +336,7 @@ app's `users` table.
   account to admin or remove someone from the list — just the one bootstrap
   admin and the add-email form.
 
-## 9. Email delivery for TOTP/WebAuthn (SendGrid)
+## 9. Email delivery for TOTP/WebAuthn (SMTP2GO)
 
 TOTP and WebAuthn registration, and password resets, all work by emailing
 the player a confirmation link. The default `authelia/configuration.yml`
@@ -350,37 +350,43 @@ tenants since ~2020. You *can* re-enable it per-mailbox, but it's gated by
 a tenant-wide **Security Defaults** toggle first — turning that off drops
 your tenant's baseline MFA enforcement, not just for this one mailbox,
 unless you already have Conditional Access covering that job. Not a
-trade-off to make for one automated app mailbox. SendGrid's free tier
-(100 emails/day) comfortably covers a handful of players and doesn't touch
-your tenant's security posture at all.
+trade-off to make for one automated app mailbox.
 
-**Set up SendGrid** (sendgrid.com):
-1. **Settings → Sender Authentication → Verify a Single Sender** — the
-   address you'll send from (e.g. `authelia@huscroft.com.au` — must be on
-   your **root** domain where a real mailbox exists to receive SendGrid's
-   confirmation email; `pathfinder.huscroft.com.au` is only web routing for
-   the app, nothing can receive mail there). Click the link SendGrid emails
-   to that address.
-2. **Settings → API Keys → Create API Key** — Restricted Access, scoped to
-   just **Mail Send**. Copy it now; SendGrid only shows it once.
-   (Single Sender Verification is enough to start sending; **Domain
-   Authentication** — DNS records for SPF/DKIM — is worth adding later for
-   better deliverability, but isn't required at this volume.)
+**Why SMTP2GO specifically**: a genuinely free tier (1,000 emails/month, no
+credit card) that comfortably covers a handful of players, independently
+ranked for strong deliverability, and offers AU data residency — a decent
+fit given the `.com.au` domain. (SendGrid was the original pick here but
+dropped its free tier; Brevo is a solid alternative if you outgrow this.)
+
+**Set up SMTP2GO** (smtp2go.com):
+1. **Sending → Verified Senders** — add the address you'll send from (e.g.
+   `authelia@huscroft.com.au` — must be on your **root** domain where a
+   real mailbox exists to receive the confirmation email;
+   `pathfinder.huscroft.com.au` is only web routing for the app, nothing
+   can receive mail there). Click the link SMTP2GO emails to that address.
+2. **Settings → SMTP Users → Add SMTP User** — creates a **dedicated SMTP
+   username and password**, separate from your account login. Unlike some
+   providers, SMTP2GO's username isn't a fixed literal — it's a real
+   generated credential, same as the password. Copy both.
+   (Verified Senders is enough to start sending; adding your domain under
+   **Sending → Domains** with the CNAME records they provide is worth doing
+   later for better deliverability, but isn't required at this volume.)
 
 **Generate the secret and update the config:**
 ```bash
 cd /mnt/<pool>/apps/pf2e-sheets/Pathfinder2e/authelia
-echo -n '<your SendGrid API key>' > secrets/smtp_password
+echo -n '<your SMTP2GO SMTP password>' > secrets/smtp_password
 ```
 `authelia/configuration.yml`'s `notifier.smtp` block is already set up for
-SendGrid (`smtp.sendgrid.net:587`, username literally `apikey` — that's not
-a placeholder, every SendGrid account uses that same literal string, the
-API key is the actual credential). Just confirm `sender:` matches the
-address you verified in step 1 above, then redeploy.
+SMTP2GO (`mail.smtp2go.com:587`). Replace the `username:` placeholder with
+your generated SMTP username directly in the file — only `password` is
+documented to support the `@/path` secret-file notation, so username stays
+as plain text here rather than assuming it works the same way. Confirm
+`sender:` matches the address you verified in step 1, then redeploy.
 
 Verify: trigger a TOTP or WebAuthn enrolment (§6) and confirm the email
-actually lands — check spam the first time, since a freshly Single-Sender-
-Verified address (as opposed to a fully domain-authenticated one) can land
-there initially on some providers.
+actually lands — check spam the first time, since a freshly verified
+sender (as opposed to a fully domain-authenticated one) can land there
+initially on some providers.
 
 See the root [CLAUDE.md](../CLAUDE.md) for the full build order.

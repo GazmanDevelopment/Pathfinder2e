@@ -46,20 +46,25 @@ storage:
   local:
     path: /config/db.sqlite3
 
-# SMTP via SendGrid — TOTP/WebAuthn registration and password-reset links
+# SMTP via SMTP2GO — TOTP/WebAuthn registration and password-reset links
 # need to actually reach players' inboxes, which the filesystem notifier
-# (writes to a local file on the box) can't do. Username is literally the
-# string "apikey" for every SendGrid account — the real credential is the
-# API key itself, which goes in secrets/smtp_password (see docs/truenas-setup.md).
+# (writes to a local file on the box) can't do. Unlike some providers,
+# SMTP2GO's username is NOT a fixed literal — it's a real credential you
+# generate under Settings > SMTP Users, alongside the password. Only
+# `password` documents @/path secret-file support in Authelia's own docs
+# (confirmed before writing this — the earlier RSA key field silently
+# treated an unsupported @/path as literal text, so this isn't assumed
+# anymore); `username` goes here as plain text instead.
 #
 # Sender is on the root domain (huscroft.com.au), not pathfinder.huscroft.com.au
 # — that subdomain is only web routing for the app, with no real mailbox to
-# receive SendGrid's Single Sender Verification email. Use a real, receivable
-# M365 mailbox address here, verified in SendGrid before this will deliver.
+# receive SMTP2GO's Verified Sender confirmation email. Use a real,
+# receivable M365 mailbox address here, verified in SMTP2GO before this
+# will deliver.
 notifier:
   smtp:
-    address: "submission://smtp.sendgrid.net:587"
-    username: "apikey"
+    address: "submission://mail.smtp2go.com:587"
+    username: "<YOUR_SMTP2GO_SMTP_USERNAME>"
     password: "@/config/secrets/smtp_password"
     sender: "Character Sheet <authelia@huscroft.com.au>"
     identifier: "huscroft.com.au"
