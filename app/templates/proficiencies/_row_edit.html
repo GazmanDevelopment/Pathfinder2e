@@ -30,6 +30,11 @@
     input.addEventListener('focus', function () {
       prevValue = input.value;
       input.value = '';
+      // Setting .value directly doesn't fire an input event, and some
+      // browsers only re-filter an already-open datalist popup on one —
+      // without this, the popup can still show the stale, filtered list
+      // for a field that was pre-filled (e.g. every seeded row's rank).
+      input.dispatchEvent(new Event('input', { bubbles: true }));
     });
     input.addEventListener('blur', function () {
       if (input.value === '' && prevValue !== null) input.value = prevValue;
