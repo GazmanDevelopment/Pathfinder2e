@@ -11,13 +11,22 @@ from app.models import User
 oauth = OAuth()
 
 for _provider in configured_providers():
-    oauth.register(
-        name=_provider["name"],
-        client_id=_provider["client_id"],
-        client_secret=_provider["client_secret"],
-        server_metadata_url=_provider["server_metadata_url"],
-        client_kwargs={"scope": "openid email profile"},
-    )
+    _register_kwargs = {
+        "name": _provider["name"],
+        "client_id": _provider["client_id"],
+        "client_secret": _provider["client_secret"],
+        "server_metadata_url": _provider["server_metadata_url"],
+        "client_kwargs": {"scope": "openid email profile"},
+    }
+    if _provider["name"] == "authelia":
+        # Authelia's client registration only allows client_secret_post
+        # (authelia/configuration.yml's token_endpoint_auth_method); authlib
+        # defaults to client_secret_basic, which Authelia's token endpoint
+        # rejects with invalid_client. Entra accepts either, so it's left
+        # off entirely for other providers rather than passed as None —
+        # authlib doesn't treat an explicit None the same as an absent key.
+        _register_kwargs["token_endpoint_auth_method"] = "client_secret_post"
+    oauth.register(**_register_kwargs)
 
 
 class NotAuthenticated(Exception):
