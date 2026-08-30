@@ -46,11 +46,24 @@ storage:
   local:
     path: /config/db.sqlite3
 
-# Filesystem notifier is fine for a tiny home instance (writes TOTP-enrolment
-# and reset links to a file). Swap for SMTP if you want real email.
+# SMTP via SendGrid — TOTP/WebAuthn registration and password-reset links
+# need to actually reach players' inboxes, which the filesystem notifier
+# (writes to a local file on the box) can't do. Username is literally the
+# string "apikey" for every SendGrid account — the real credential is the
+# API key itself, which goes in secrets/smtp_password (see docs/truenas-setup.md).
+#
+# Sender is on the root domain (huscroft.com.au), not pathfinder.huscroft.com.au
+# — that subdomain is only web routing for the app, with no real mailbox to
+# receive SendGrid's Single Sender Verification email. Use a real, receivable
+# M365 mailbox address here, verified in SendGrid before this will deliver.
 notifier:
-  filesystem:
-    filename: /config/notification.txt
+  smtp:
+    address: "submission://smtp.sendgrid.net:587"
+    username: "apikey"
+    password: "@/config/secrets/smtp_password"
+    sender: "Character Sheet <authelia@huscroft.com.au>"
+    identifier: "huscroft.com.au"
+    subject: "[Authelia] {title}"
 
 # Require the second factor (TOTP) everywhere. Users enrol their authenticator
 # on first login.
