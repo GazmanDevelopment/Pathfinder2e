@@ -185,9 +185,14 @@ Each phase leaves something that runs. **Auth comes after the app works.**
   state, since a collapsed `<details>` can't be forced open with CSS alone
   in current browsers — verified directly, see `app/templates/characters/
   sheet.html`'s `beforeprint`/`afterprint` handlers. No new route or
-  duplicate template; the existing sheet page adapts in place. Still
-  outstanding: a dataset snapshot schedule for backups, optional Pathbuilder
-  JSON import.
+  duplicate template; the existing sheet page adapts in place. Dataset
+  snapshot schedule for backups — **done**: a TrueNAS Periodic Snapshot
+  Task on the `pf2e-sheets` dataset (recursive, daily, two-week retention)
+  covers the SQLite DB, uploads, and Authelia's config/secrets together in
+  one snapshot — pure TrueNAS UI configuration, no code; see
+  `docs/truenas-setup.md` §11 for the exact steps and what a same-pool
+  snapshot does and doesn't protect against. Still outstanding: optional
+  Pathbuilder JSON import.
 - **Phase 6 — Tap to roll.** The dice roller: saves/skills/abilities from stored
   modifiers (no new fields); `attack_bonus`/`damage_formula` on weapons & spells;
   nat-20/nat-1 highlight; optional crit + MAP.
