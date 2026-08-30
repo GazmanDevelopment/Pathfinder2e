@@ -121,6 +121,16 @@ stack alongside your other services.
 - **Secrets:** Entra client secret, Authelia JWT/session/storage keys, and (Phase
   8, optional) an Anthropic API key → env or a secrets file on the dataset.
   Never in the image.
+- **`authelia/configuration.yml` and `authelia/users_database.yml` are
+  git-tracked templates, but the deployed box's real copies have actual
+  secrets, the real domain, and the RSA issuer key hand-edited in.** The box
+  has both marked `git update-index --skip-worktree` so a `git pull` there
+  never touches them or risks staging real secrets into a commit. **Whenever
+  a change here touches either file, say so explicitly** — the user's next
+  `git pull` on the box won't apply it automatically; they need to
+  temporarily `git update-index --no-skip-worktree`, diff, and manually
+  reapply anything relevant. See docs/truenas-setup.md for the full
+  workflow.
 - **TLS & routing:** the existing reverse proxy (Traefik/Caddy) + Let's Encrypt.
   Two routes: the app and Authelia.
 
