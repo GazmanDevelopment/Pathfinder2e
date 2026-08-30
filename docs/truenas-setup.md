@@ -510,4 +510,46 @@ re-marks skip-worktree, and runs `docker build -t pf2e-sheet:latest .`
 only builds the image — you still need to redeploy separately (Apps UI
 restart, or `docker compose up -d --build`) to actually run it.
 
+## 11. Backup snapshot schedule (Phase 5)
+
+Per §1, `data/` (the SQLite DB), `uploads/`, and `authelia/` all live as
+plain directories inside the **`pf2e-sheets` dataset** — not separate child
+datasets — so one periodic snapshot task on that single dataset covers
+everything: characters, avatars, and Authelia's config/secrets/user
+database together, always from the same point in time.
+
+**TrueNAS UI**: *Data Protection → Periodic Snapshot Tasks → Add*.
+- **Dataset**: `pf2e-sheets`.
+- **Recursive**: on. Not strictly required today (there are no child
+  datasets to descend into — see above), but harmless to enable and
+  future-proofs against someone later carving one out under it.
+- **Schedule**: daily is a reasonable baseline for a home game's usage
+  pattern — pick a time when the table's unlikely to be actively playing.
+  Go more frequent (e.g. hourly) if you want tighter recovery around an
+  active session.
+- **Snapshot Lifetime**: two weeks is a sensible starting retention —
+  enough history to recover from a bad edit or an admin mistake without
+  unbounded growth. Adjust to taste; ZFS snapshots are cheap (copy-on-write,
+  only the changed blocks cost space) so a longer retention isn't very
+  expensive here.
+- **Naming Schema**: the default is fine — it just needs to be unique per
+  snapshot, nothing reads it programmatically.
+
+**Why this is safe with SQLite specifically**: `db.sqlite3` runs in **WAL
+mode** (see `app/db.py`), which means a ZFS snapshot landing mid-write
+captures exactly the state SQLite is already designed to recover from after
+an ungraceful stop (e.g. a power loss) — its own WAL-replay on next open
+handles it. No need to quiesce the app or pause writes before a snapshot;
+ZFS snapshots are atomic at the filesystem level regardless of what's
+mid-flight.
+
+**What this doesn't cover**: a snapshot lives on the *same* pool as the
+data it's a snapshot of — it protects against an accidental deletion, a bad
+edit, or admin error, **not** against that physical drive/pool failing
+outright. If the box's storage redundancy (or lack of it) is a concern
+worth addressing, that's a separate decision (mirrored/RAIDZ pool,
+replication to a second location) — out of scope for what Phase 5 asked
+for, but worth knowing the boundary of what a same-pool snapshot actually
+protects against.
+
 See the root [CLAUDE.md](../CLAUDE.md) for the full build order.
