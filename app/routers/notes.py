@@ -1,3 +1,6 @@
+import re
+
+import nh3
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
@@ -5,9 +8,23 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.deps import get_character_or_404
 from app.models import Character, Note
-from app.templating import render_fragment, templates
+from app.templating import NOTE_ATTRIBUTES, NOTE_TAGS, NOTE_URL_SCHEMES, render_fragment, templates
 
 router = APIRouter(prefix="/characters/{character_id}/notes", tags=["notes"])
+
+_EMPTY_BODY_RE = re.compile(r"^\s*(<p>\s*(<br\s*/?>)?\s*</p>\s*)*$", re.IGNORECASE)
+
+
+def _clean_body(body: str) -> str | None:
+    """Sanitizes on the way in too (belt-and-suspenders — app/templating.py's
+    note_html() filter is what actually matters for safety, since it's the
+    one place every source of a Note.body converges, but this keeps the DB
+    itself holding clean HTML for the Quill-authored path specifically).
+    Quill serializes an empty editor as "<p><br></p>", which is truthy, so
+    without this an emptied note would never go back to None.
+    """
+    cleaned = nh3.clean(body, tags=NOTE_TAGS, attributes=NOTE_ATTRIBUTES, url_schemes=NOTE_URL_SCHEMES)
+    return None if _EMPTY_BODY_RE.match(cleaned) else cleaned
 
 
 def _get_or_404(character_id: int, note_id: int, db: Session) -> Note:
@@ -39,7 +56,7 @@ def create_note(
     title: str = Form(""),
     body: str = Form(""),
 ):
-    note = Note(character_id=character_id, title=title or None, body=body or None)
+    note = Note(character_id=character_id, title=title or None, body=_clean_body(body))
     db.add(note)
     db.commit()
     db.refresh(note)
@@ -75,7 +92,7 @@ def update_note(
 ):
     note = _get_or_404(character_id, note_id, db)
     note.title = title or None
-    note.body = body or None
+    note.body = _clean_body(body)
     db.commit()
     return templates.TemplateResponse(
         "notes/_row.html", {"request": request, "character_id": character_id, "note": note}

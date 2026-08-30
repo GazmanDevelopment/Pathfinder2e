@@ -920,6 +920,16 @@ textarea {
   padding-left: 0.7rem;
 }
 
+/* Quill's own .ql-editor padding/min-height (issue #29) is sized for an
+   active editing surface, not a compact read-only row — reset it here so
+   only its semantic tag styling (list markers, links) carries over. */
+.item-effect.ql-editor {
+  padding-top: 0;
+  padding-bottom: 0;
+  padding-right: 0;
+  min-height: 0;
+}
+
 .tag {
   display: inline-block;
   background: var(--gold-wash);

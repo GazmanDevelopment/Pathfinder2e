@@ -80,7 +80,7 @@ is one query per section; an edit is a single insert/update/delete.
 | `spells` | name, rank, uses/slots, action cost, range, effect, flags, `attack_bonus`, `damage_formula` | Spells |
 | `equipment` | item, bonus/damage text, notes, qty, container, `attack_bonus`, `damage_formula`, `agile` flag | Equipment |
 | `features` | source (ancestry/order/class/feat), name, effect, level gained | Ancestry/Order/Class Features |
-| `notes` | free text: level-up summary, combat reference, GM notes | Changes / Quick Reference |
+| `notes` | rich text (issue #29): level-up summary, combat reference, GM notes | Changes / Quick Reference |
 | `reference_library` | canonical spells/items/feats imported from open dataset; type, name, structured fields, source, version (Phase 7) | lookup source |
 
 `characters` also carries `parent_character_id` (nullable, self-referential) and

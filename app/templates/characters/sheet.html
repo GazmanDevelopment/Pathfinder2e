@@ -2,6 +2,12 @@
 
 {% block title %}{{ character.name }}{% endblock %}
 
+{% block extra_head %}
+  {# Notes' rich-text editor (issue #29) — only this page needs it. #}
+  <link rel="stylesheet" href="https://unpkg.com/quill@2.0.3/dist/quill.snow.css">
+  <script src="https://unpkg.com/quill@2.0.3/dist/quill.js"></script>
+{% endblock %}
+
 {% block content %}
   <div class="sheet-toolbar">
     <a class="btn btn--ghost" href="/characters/{{ character.id }}/export/pathbuilder">Export (Pathbuilder)</a>
