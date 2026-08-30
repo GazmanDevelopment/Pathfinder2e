@@ -857,6 +857,41 @@ textarea {
   font-size: 0.92rem;
 }
 
+/* Rank suggestion dropdown (proficiencies) — a small self-contained list,
+   not the native datalist popup; see the script in _row_edit.html. */
+.rank-field {
+  position: relative;
+}
+.rank-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin-top: 0.25rem;
+  background: #fffdf6;
+  border: 1px solid var(--gold-pale);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.rank-suggestions button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+.rank-suggestions button:hover,
+.rank-suggestions button:focus {
+  background: var(--gold-wash);
+}
+
 .item-summary {
   display: flex;
   align-items: baseline;

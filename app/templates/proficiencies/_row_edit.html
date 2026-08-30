@@ -1,6 +1,14 @@
 <li id="{{ 'proficiency-row-' ~ prof.id if prof else 'proficiency-row-new' }}" class="item-row item-row--compact item-row--edit">
   <input type="text" name="name" value="{{ prof.name if prof else '' }}" placeholder="Skill or Save name" required>
-  <input type="text" name="rank" value="{{ prof.rank or '' if prof else '' }}" list="rank-suggestions" placeholder="Rank">
+  <span class="rank-field">
+    <input type="text" name="rank" value="{{ prof.rank or '' if prof else '' }}" placeholder="Rank"
+           class="rank-input" autocomplete="off">
+    <div class="rank-suggestions" hidden>
+      {% for option in ("Untrained", "Trained", "Expert", "Master", "Legendary") %}
+        <button type="button" tabindex="-1">{{ option }}</button>
+      {% endfor %}
+    </div>
+  </span>
   <input type="number" name="bonus" value="{{ prof.bonus if prof and prof.bonus is not none else '' }}" placeholder="Bonus">
   <span class="item-actions">
     {% if prof %}
@@ -15,30 +23,42 @@
               hx-target="closest li" hx-swap="outerHTML">Cancel</button>
     {% endif %}
   </span>
+  <script>
+    (function () {
+      // A native <input list=datalist> was tried here first, but browsers
+      // filter the popup by the field's *current* value, and every seeded
+      // skill/save starts pre-filled with "Untrained" — hiding every other
+      // rank until the text was manually deleted. This small
+      // self-contained dropdown avoids relying on that native, opaque,
+      // hard-to-test behavior entirely — the five ranks always show, full
+      // list, every time the field is focused.
+      var li = document.currentScript.closest('li');
+      var input = li.querySelector('.rank-input');
+      var box = li.querySelector('.rank-suggestions');
+      if (!input || !box) return;
+
+      input.addEventListener('focus', function () {
+        box.hidden = false;
+      });
+      input.addEventListener('click', function () {
+        // Picking a suggestion (mousedown + preventDefault, below) never
+        // actually blurs the input, so a second click on an already-
+        // focused field fires no new 'focus' event to reopen the box.
+        box.hidden = false;
+      });
+      input.addEventListener('blur', function () {
+        box.hidden = true;
+      });
+      box.querySelectorAll('button').forEach(function (btn) {
+        // mousedown + preventDefault, not click: stops the input from ever
+        // blurring on the way to the click, so there's no race with the
+        // blur handler above hiding the box first.
+        btn.addEventListener('mousedown', function (event) {
+          event.preventDefault();
+          input.value = btn.textContent;
+          box.hidden = true;
+        });
+      });
+    })();
+  </script>
 </li>
-<script>
-  (function () {
-    // Native <datalist> filters its suggestions by the field's current
-    // value, so a pre-filled rank (every seeded skill/save starts as
-    // "Untrained") hid every option that doesn't share that prefix —
-    // Trained/Expert/Master/Legendary never showed up. Clearing the field
-    // on focus shows the full suggestion list; blur restores whatever was
-    // there if the user didn't pick or type something new.
-    var input = document.currentScript.closest('li').querySelector('input[name="rank"]');
-    if (!input) return;
-    var prevValue = null;
-    input.addEventListener('focus', function () {
-      prevValue = input.value;
-      input.value = '';
-      // Setting .value directly doesn't fire an input event, and some
-      // browsers only re-filter an already-open datalist popup on one —
-      // without this, the popup can still show the stale, filtered list
-      // for a field that was pre-filled (e.g. every seeded row's rank).
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-    });
-    input.addEventListener('blur', function () {
-      if (input.value === '' && prevValue !== null) input.value = prevValue;
-      prevValue = null;
-    });
-  })();
-</script>
