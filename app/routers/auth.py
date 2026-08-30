@@ -1,3 +1,4 @@
+import logging
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -8,6 +9,8 @@ from app.auth import oauth, resolve_email, resolve_login_user, session_payload
 from app.config import APP_BASE_URL, configured_providers
 from app.db import get_db
 from app.templating import templates
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["auth"])
 
@@ -61,6 +64,7 @@ async def auth_callback(provider: str, request: Request, db: Session = Depends(g
     try:
         token = await client.authorize_access_token(request)
     except Exception:
+        logger.exception("OIDC token exchange failed for provider '%s'", provider)
         return RedirectResponse(url="/login?" + urlencode({"error": "Sign-in failed. Please try again."}), status_code=303)
 
     claims = token.get("userinfo") or {}
