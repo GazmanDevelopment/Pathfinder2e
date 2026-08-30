@@ -46,7 +46,7 @@ storage:
   local:
     path: /config/db.sqlite3
 
-# SMTP via Brevo — TOTP/WebAuthn registration and password-reset links need
+# SMTP via Mailjet — TOTP/WebAuthn registration and password-reset links need
 # to actually reach players' inboxes, which the filesystem notifier (writes
 # to a local file on the box) can't do.
 #
@@ -59,15 +59,16 @@ storage:
 # manual `curl` SMTP AUTH test, which succeeded — curl doesn't implement
 # SCRAM at all, so it fell through to CRAM-MD5 and worked). Confirmed by
 # reading Authelia's own source (internal/notification/smtp_auth.go), not
-# assumed. Brevo's server doesn't offer SCRAM at all (confirmed by probing
-# its EHLO response directly), so Authelia falls through to a mechanism
-# that actually works. See docs/truenas-setup.md §9 for the full story.
+# assumed. NOT Brevo either — its free plan was dropped before this got
+# deployed. Mailjet's server doesn't offer SCRAM at all (confirmed by
+# probing its EHLO response directly), so Authelia falls through to a
+# mechanism that actually works. See docs/truenas-setup.md §9 for the full
+# story.
 #
-# Username is NOT your Brevo account email — it's the specific SMTP login
-# string shown on the SMTP & API Keys page (looks like
-# "7xxxxx@smtp-brevo.com"), generated alongside an SMTP key (not an API
-# key — those are different credential types, same trap as SMTP2GO's
-# separate API keys vs SMTP Users). Only `password` documents @/path
+# Unlike SMTP2GO/Brevo (separate SMTP-specific credentials, distinct from
+# their API keys), Mailjet's SMTP username IS its API key (public) and the
+# SMTP password IS its Secret Key — both from the same API Keys page, no
+# separate "SMTP user" to create. Only `password` documents @/path
 # secret-file support in Authelia's own docs (confirmed before writing
 # this — the earlier RSA key field silently treated an unsupported @/path
 # as literal text, so this isn't assumed anymore); `username` goes here as
@@ -75,12 +76,12 @@ storage:
 #
 # Sender is on the root domain (huscroft.com.au), not pathfinder.huscroft.com.au
 # — that subdomain is only web routing for the app, with no real mailbox to
-# receive Brevo's sender-verification email. Use a real, receivable M365
-# mailbox address here, verified in Brevo before this will deliver.
+# receive Mailjet's sender-verification email. Use a real, receivable M365
+# mailbox address here, verified in Mailjet before this will deliver.
 notifier:
   smtp:
-    address: "submission://smtp-relay.brevo.com:587"
-    username: "<YOUR_BREVO_SMTP_LOGIN>"
+    address: "submission://in-v3.mailjet.com:587"
+    username: "<YOUR_MAILJET_API_KEY>"
     password: "@/config/secrets/smtp_password"
     sender: "Character Sheet <authelia@huscroft.com.au>"
     identifier: "huscroft.com.au"

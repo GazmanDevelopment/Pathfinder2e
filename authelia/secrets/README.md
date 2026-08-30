@@ -14,7 +14,7 @@ walk-through):
 | `storage_encryption_key` | `authelia crypto rand --length 64` |
 | `oidc_hmac_secret` | `authelia crypto rand --length 64` |
 | `oidc_issuer_private_key.pem` | `authelia crypto certificate rsa generate --directory /config/secrets` (use the key) |
-| `smtp_password` | Not generated — it's your email provider's credential (an SMTP key from Brevo, not your account password or an API key). See `docs/truenas-setup.md` §9. |
+| `smtp_password` | Not generated — it's your email provider's credential (Mailjet's **Secret Key**, from the same API Keys page as the username). See `docs/truenas-setup.md` §9. |
 
 The app's own secrets (its `SESSION_SECRET` and the `pf2e-sheet` client secret,
 whose **hash** goes in `configuration.yml`) are set as environment variables on

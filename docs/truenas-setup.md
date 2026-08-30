@@ -336,7 +336,7 @@ app's `users` table.
   account to admin or remove someone from the list — just the one bootstrap
   admin and the add-email form.
 
-## 9. Email delivery for TOTP/WebAuthn (Brevo)
+## 9. Email delivery for TOTP/WebAuthn (Mailjet)
 
 TOTP and WebAuthn registration, and password resets, all work by emailing
 the player a confirmation link. The default `authelia/configuration.yml`
@@ -352,49 +352,54 @@ your tenant's baseline MFA enforcement, not just for this one mailbox,
 unless you already have Conditional Access covering that job. Not a
 trade-off to make for one automated app mailbox.
 
-**Why Brevo, and not SendGrid or SMTP2GO (both tried first)**: SendGrid
-dropped its free tier. SMTP2GO looked right (genuine free tier, AU data
-residency) and got as far as a fully working manual `curl` SMTP test — but
-Authelia itself still failed every time with `535 Incorrect authentication
-data`, even with confirmed-correct credentials. Root cause, confirmed by
-reading Authelia's own source
+**Why Mailjet, and not SendGrid, SMTP2GO, or Brevo (all tried first)**:
+SendGrid dropped its free tier. SMTP2GO looked right (genuine free tier, AU
+data residency) and got as far as a fully working manual `curl` SMTP test —
+but Authelia itself still failed every time with `535 Incorrect
+authentication data`, even with confirmed-correct credentials. Root cause,
+confirmed by reading Authelia's own source
 (`internal/notification/smtp_auth.go`): its SMTP client always tries the
 *strongest* AUTH mechanism the server advertises, with no config option to
 change that — and SMTP2GO's server advertises SCRAM-SHA-256, a mechanism
 Authelia locks onto and which failed against SMTP2GO's implementation of
 it. `curl` succeeded only because it doesn't implement SCRAM at all, so it
 fell through to CRAM-MD5 instead — a different mechanism, which is why the
-manual test passing didn't mean Authelia would work. Brevo's SMTP server
-doesn't advertise SCRAM (confirmed by probing it directly), so Authelia
-falls through to a mechanism that actually works. Free tier is 300
-emails/day (9,000/month), no credit card, comfortably covering a handful
-of players — if you ever hit that ceiling, Mailjet (200/day, 6,000/month,
-also no SCRAM) is a same-shape fallback.
+manual test passing didn't mean Authelia would work. Brevo was the next
+pick (also confirmed via a direct EHLO probe to not offer SCRAM) but its
+free plan was gone by the time this got deployed. Mailjet's server also
+doesn't offer SCRAM (same direct-probe check), and its free plan — 200
+emails/day, 6,000/month, no credit card — was confirmed live against
+Mailjet's own pricing page, not a search result, given the previous two
+misses.
 
-**Set up Brevo** (brevo.com):
-1. **Senders, Domains & Dedicated IPs → Senders** — add the address you'll
-   send from (e.g. `authelia@huscroft.com.au` — must be on your **root**
-   domain where a real mailbox exists to receive the confirmation email;
-   `pathfinder.huscroft.com.au` is only web routing for the app, nothing
-   can receive mail there). Click the link Brevo emails to that address.
-2. **SMTP & API → SMTP tab** — click to generate an **SMTP key** (*not* an
-   API key — those are a different credential type and won't work here).
-   The page shows a **login** string (looks like
-   `7xxxxx@smtp-brevo.com` — this is *not* your Brevo account email) and
-   the generated **SMTP key**. Copy both; the key is only shown once.
+**Set up Mailjet** (mailjet.com):
+1. **Account settings → Sender addresses & domains** — add and verify the
+   address you'll send from (e.g. `authelia@huscroft.com.au` — must be on
+   your **root** domain where a real mailbox exists to receive the
+   confirmation email; `pathfinder.huscroft.com.au` is only web routing for
+   the app, nothing can receive mail there). Click the link Mailjet emails
+   to that address.
+2. **Account settings → API Key Management** — unlike SMTP2GO/Brevo, there's
+   no separate "SMTP user" to create: the **API Key** (public, shown
+   directly) *is* the SMTP username, and the **Secret Key** (click "Show" —
+   displayed only once) *is* the SMTP password. Copy both.
 
 **Generate the secret and update the config:**
 ```bash
 cd /mnt/<pool>/apps/pf2e-sheets/Pathfinder2e/authelia
-echo -n '<your Brevo SMTP key>' > secrets/smtp_password
+echo -n '<your Mailjet Secret Key>' > secrets/smtp_password
 ```
 `authelia/configuration.yml`'s `notifier.smtp` block is already set up for
-Brevo (`smtp-relay.brevo.com:587`). Replace the `username:` placeholder
-with the SMTP login string from step 2 (not your account email) directly
-in the file — only `password` is documented to support the `@/path`
-secret-file notation, so username stays as plain text here rather than
-assuming it works the same way. Confirm `sender:` matches the address you
-verified in step 1, then redeploy.
+Mailjet (`in-v3.mailjet.com:587`). Replace the `username:` placeholder with
+your Mailjet API Key directly in the file — only `password` is documented
+to support the `@/path` secret-file notation, so username stays as plain
+text here rather than assuming it works the same way. Confirm `sender:`
+matches the address you verified in step 1, then redeploy.
+
+One Mailjet-specific quirk worth knowing: mail past the 200/day cap is
+queued, then permanently dropped if still unsent after 3 days — a
+non-issue at this table's volume, but worth remembering if sending ever
+spikes (e.g. re-enrolling several players' TOTP at once).
 
 Verify: trigger a TOTP or WebAuthn enrolment (§6) and confirm the email
 actually lands — check spam the first time, since a freshly verified
