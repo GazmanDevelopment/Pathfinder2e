@@ -1,6 +1,7 @@
 <li id="{{ 'note-row-' ~ note.id if note else 'note-row-new' }}" class="item-row item-row--card item-row--edit">
   <input type="text" name="title" value="{{ note.title or '' if note else '' }}" placeholder="Title (optional)">
-  <textarea name="body" placeholder="Note text">{{ note.body or '' if note else '' }}</textarea>
+  <div class="rich-text-editor">{{ note.body | note_html if note else '' }}</div>
+  <input type="hidden" name="body">
   <div class="item-actions">
     {% if note %}
       <button type="button" class="btn btn--primary" hx-put="/characters/{{ character_id }}/notes/{{ note.id }}"
@@ -14,4 +15,31 @@
               hx-target="closest li" hx-swap="outerHTML">Cancel</button>
     {% endif %}
   </div>
+  <script>
+    (function () {
+      // Established pattern from proficiencies/_row_edit.html: this script
+      // MUST be nested inside the <li> it operates on, not a sibling after
+      // it — document.currentScript.closest('li') only walks ancestors,
+      // and a sibling placement silently fails with no listener attached
+      // (a real bug hit twice earlier this session before the placement
+      // rule was pinned down).
+      var li = document.currentScript.closest('li');
+      var container = li.querySelector('.rich-text-editor');
+      var hiddenInput = li.querySelector('input[name="body"]');
+      var quill = new Quill(container, {
+        theme: 'snow',
+        modules: {
+          toolbar: [['bold', 'italic', 'underline'], [{list: 'ordered'}, {list: 'bullet'}], ['link']],
+        },
+      });
+      // Quill reads the container's existing innerHTML as initial content
+      // at construction, but does NOT fire text-change for it — without
+      // this explicit seed, opening edit and clicking Save without typing
+      // anything would submit an empty body.
+      hiddenInput.value = quill.root.innerHTML;
+      quill.on('text-change', function () {
+        hiddenInput.value = quill.root.innerHTML;
+      });
+    })();
+  </script>
 </li>

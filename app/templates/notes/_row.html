@@ -2,7 +2,7 @@
   <div class="item-summary">
     <strong>{{ note.title or "(untitled)" }}</strong>
   </div>
-  {% if note.body %}<p class="item-effect">{{ note.body }}</p>{% endif %}
+  {% if note.body %}<div class="item-effect ql-editor">{{ note.body | note_html }}</div>{% endif %}
   <div class="item-actions">
     <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/notes/{{ note.id }}/edit"
             hx-target="#note-row-{{ note.id }}" hx-swap="outerHTML">Edit</button>
