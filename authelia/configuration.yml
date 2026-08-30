@@ -57,8 +57,15 @@ access_control:
 identity_providers:
   oidc:
     hmac_secret: "@/config/secrets/oidc_hmac_secret"
+    # Unlike the secrets above, jwks[].key does NOT support the "@/path"
+    # file-reference notation — it needs the raw PEM content inline, or
+    # Authelia reads the literal string "@/..." as the key and fails with
+    # "no PEM block was supplied or it was malformed". Paste the full
+    # contents of secrets/oidc_issuer_private_key.pem below, every line
+    # (including BEGIN/END) indented consistently under the `|`.
     jwks:
-      - key: "@/config/secrets/oidc_issuer_private_key.pem"
+      - key: |
+          <PASTE THE FULL CONTENTS OF secrets/oidc_issuer_private_key.pem HERE>
     clients:
       - client_id: pf2e-sheet
         client_name: "Character Sheet"

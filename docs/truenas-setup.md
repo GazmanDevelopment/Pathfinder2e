@@ -109,7 +109,12 @@ docker run --rm authelia/authelia:4.38 \
 
 Then edit the templates (swap `example.com` for your domain throughout):
 - `authelia/configuration.yml` — set the `session.cookies` domain/URLs, the
-  client `redirect_uris`, and paste the **client-secret hash**.
+  client `redirect_uris`, and paste the **client-secret hash**. Also paste
+  the full contents of `secrets/oidc_issuer_private_key.pem` inline at
+  `identity_providers.oidc.jwks[0].key` — that field is the one exception
+  that does **not** accept the `@/path` file-reference notation the other
+  secrets use; giving it the path string instead of the key's actual
+  content fails with *"no PEM block was supplied or it was malformed."*
 - `authelia/users_database.yml` — one entry per player with their argon2 hash
   and real email. **The email must match** what you'll allow-list in Phase 4.
 
