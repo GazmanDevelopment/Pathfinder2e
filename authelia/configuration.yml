@@ -46,44 +46,43 @@ storage:
   local:
     path: /config/db.sqlite3
 
-# SMTP via Mailjet — TOTP/WebAuthn registration and password-reset links need
-# to actually reach players' inboxes, which the filesystem notifier (writes
-# to a local file on the box) can't do.
+# SMTP via a dedicated Gmail account — TOTP/WebAuthn registration and
+# password-reset links need to actually reach players' inboxes, which the
+# filesystem notifier (writes to a local file on the box) can't do.
 #
-# NOT SMTP2GO: SMTP2GO's server advertises SCRAM-SHA-256 in its EHLO
-# capabilities, and Authelia's SMTP client (github.com/wneessen/go-mail)
-# always prefers the strongest mechanism the server offers — SCRAM-SHA-256
-# here — with no config option to make it prefer something else. That
-# SCRAM attempt failed against SMTP2GO with "535 Incorrect authentication
-# data" even with fully correct credentials (verified independently via a
-# manual `curl` SMTP AUTH test, which succeeded — curl doesn't implement
-# SCRAM at all, so it fell through to CRAM-MD5 and worked). Confirmed by
-# reading Authelia's own source (internal/notification/smtp_auth.go), not
-# assumed. NOT Brevo either — its free plan was dropped before this got
-# deployed. Mailjet's server doesn't offer SCRAM at all (confirmed by
-# probing its EHLO response directly), so Authelia falls through to a
-# mechanism that actually works. See docs/truenas-setup.md §9 for the full
-# story.
+# NOT SMTP2GO/Brevo/Mailjet, all tried first (see docs/truenas-setup.md §9
+# for the full story — three providers' worth of debugging before landing
+# here). SMTP2GO's server advertises SCRAM-SHA-256, which this version of
+# Authelia's SMTP client always prefers over anything else the server
+# offers with no config override, and that specific SCRAM attempt failed
+# with "535" despite fully correct credentials — confirmed by reading
+# Authelia's own source, not assumed. Brevo's free plan was gone by the
+# time this got deployed. Mailjet was the strangest: identical credentials
+# succeeded via `curl` using three different AUTH mechanisms (PLAIN,
+# CRAM-MD5, DIGEST-MD5), from the exact same Docker network Authelia runs
+# on, over both STARTTLS and implicit TLS — yet Authelia's own client
+# failed with "535" every time regardless, for reasons never conclusively
+# identified even after tracing the exact pinned dependency versions
+# (github.com/wneessen/go-mail v0.5.2) line by line. Gmail is what
+# actually works, and is also the most field-tested SMTP+Authelia
+# combination in the community.
 #
-# Unlike SMTP2GO/Brevo (separate SMTP-specific credentials, distinct from
-# their API keys), Mailjet's SMTP username IS its API key (public) and the
-# SMTP password IS its Secret Key — both from the same API Keys page, no
-# separate "SMTP user" to create. Only `password` documents @/path
-# secret-file support in Authelia's own docs (confirmed before writing
-# this — the earlier RSA key field silently treated an unsupported @/path
-# as literal text, so this isn't assumed anymore); `username` goes here as
-# plain text instead.
-#
-# Sender is on the root domain (huscroft.com.au), not pathfinder.huscroft.com.au
-# — that subdomain is only web routing for the app, with no real mailbox to
-# receive Mailjet's sender-verification email. Use a real, receivable M365
-# mailbox address here, verified in Mailjet before this will deliver.
+# This is a dedicated Gmail account, NOT the M365 tenant used elsewhere in
+# this project — SMTP AUTH is disabled tenant-wide on M365 by default and
+# turning that off isn't a trade-off worth making for one automated app
+# mailbox (see docs/truenas-setup.md §9). `username` is the full Gmail
+# address; `password` is a Google **App Password** (Google Account →
+# Security → App Passwords, needs 2-Step Verification enabled first), not
+# the account's real login password. `sender` has to be that same Gmail
+# address (or a "Send As" alias configured in Gmail) — Gmail's relay
+# rejects an arbitrary From address the way a domain-verified provider
+# would allow.
 notifier:
   smtp:
-    address: "submission://in-v3.mailjet.com:587"
-    username: "<YOUR_MAILJET_API_KEY>"
+    address: "submission://smtp.gmail.com:587"
+    username: "<YOUR_GMAIL_ADDRESS>"
     password: "@/config/secrets/smtp_password"
-    sender: "Character Sheet <authelia@huscroft.com.au>"
+    sender: "Character Sheet <YOUR_GMAIL_ADDRESS>"
     identifier: "huscroft.com.au"
     subject: "[Authelia] {title}"
 
