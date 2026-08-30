@@ -207,6 +207,36 @@ a:hover {
   box-shadow: var(--shadow-raised);
 }
 
+/* Sections are <details>, collapsible by clicking/tapping the header — the
+   native marker is replaced with a chevron that matches the h2's styling
+   rather than sitting outside it. */
+.sheet-section > summary {
+  cursor: pointer;
+  list-style: none;
+}
+.sheet-section > summary::-webkit-details-marker {
+  display: none;
+}
+.sheet-section > summary h2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.sheet-section > summary h2::after {
+  content: "\25BE";
+  font-size: 0.8rem;
+  transition: transform 0.15s ease;
+}
+.sheet-section:not([open]) > summary h2::after {
+  transform: rotate(-90deg);
+}
+.sheet-section:not([open]) > summary h2 {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
 /* --- Character banner (avatar + header as one card) ---------------------- */
 
 /* The two children remain independent HTMX swap targets, so the card chrome

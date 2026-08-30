@@ -16,3 +16,24 @@
     {% endif %}
   </span>
 </li>
+<script>
+  (function () {
+    // Native <datalist> filters its suggestions by the field's current
+    // value, so a pre-filled rank (every seeded skill/save starts as
+    // "Untrained") hid every option that doesn't share that prefix —
+    // Trained/Expert/Master/Legendary never showed up. Clearing the field
+    // on focus shows the full suggestion list; blur restores whatever was
+    // there if the user didn't pick or type something new.
+    var input = document.currentScript.closest('li').querySelector('input[name="rank"]');
+    if (!input) return;
+    var prevValue = null;
+    input.addEventListener('focus', function () {
+      prevValue = input.value;
+      input.value = '';
+    });
+    input.addEventListener('blur', function () {
+      if (input.value === '' && prevValue !== null) input.value = prevValue;
+      prevValue = null;
+    });
+  })();
+</script>

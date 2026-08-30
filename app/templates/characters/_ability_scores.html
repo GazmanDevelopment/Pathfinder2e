@@ -1,5 +1,5 @@
-<section id="ability-scores" class="sheet-section">
-  <h2>Ability Scores</h2>
+<details id="ability-scores" class="sheet-section" open>
+  <summary><h2>Ability Scores</h2></summary>
   <div class="stat-grid">
     {% for label, score, mod in [
       ("STR", character.str_score, character.str_mod),
@@ -18,4 +18,4 @@
   </div>
   <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character.id }}/ability-scores/edit"
           hx-target="#ability-scores" hx-swap="outerHTML">Edit</button>
-</section>
+</details>

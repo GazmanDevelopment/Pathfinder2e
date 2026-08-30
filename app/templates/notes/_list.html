@@ -1,10 +1,10 @@
 {% set character_id = character.id %}
-<section class="sheet-section">
-  <h2>Notes</h2>
+<details class="sheet-section" open>
+  <summary><h2>Notes</h2></summary>
   <ul id="note-list" class="item-list">
     {% for note in character.notes %}
       {% include "notes/_row.html" %}
     {% endfor %}
     {% include "notes/_add_trigger.html" %}
   </ul>
-</section>
+</details>

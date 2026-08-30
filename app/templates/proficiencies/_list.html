@@ -1,6 +1,6 @@
 {% set character_id = character.id %}
-<section class="sheet-section">
-  <h2>Saves &amp; Skills</h2>
+<details class="sheet-section" open>
+  <summary><h2>Saves &amp; Skills</h2></summary>
   <datalist id="rank-suggestions">
     <option value="Untrained">
     <option value="Trained">
@@ -14,4 +14,4 @@
     {% endfor %}
     {% include "proficiencies/_add_trigger.html" %}
   </ul>
-</section>
+</details>
