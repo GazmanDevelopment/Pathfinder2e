@@ -389,4 +389,58 @@ actually lands — check spam the first time, since a freshly verified
 sender (as opposed to a fully domain-authenticated one) can land there
 initially on some providers.
 
+## 10. Switching branches on the box without losing live secrets
+
+`authelia/configuration.yml` and `authelia/users_database.yml` are
+git-tracked **templates** in the repo, but the box's real copies have
+actual secrets, the real domain, and real player entries hand-edited in —
+they're marked `git update-index --skip-worktree` (§3, §8) specifically so
+a routine `git pull` on `main` never touches or conflicts with them.
+
+That's enough for `git pull`. It is **not** enough on its own for
+`git checkout <other-branch>` — e.g. pulling down an unmerged fix branch to
+test before it's merged to `main`. Two gotchas, in the order you'll hit
+them:
+
+1. **`git checkout <branch>` still refuses**, even with skip-worktree set,
+   with *"Your local changes to the following files would be overwritten by
+   checkout."* Skip-worktree tells git to leave the file alone once it's
+   safely switched branches — it doesn't make git skip its own safety check
+   beforehand.
+2. Un-marking the file and running `git checkout -- <path>` to discard the
+   local edits (so the branch switch can proceed) then fails with
+   *"pathspec did not match any files"* — because skip-worktree makes git
+   treat the path as invisible to path-scoped commands like this. You have
+   to clear the skip-worktree bit **first**, before git will touch the file
+   again at all.
+
+The safe sequence — back the real files up outside git entirely, let git do
+whatever it wants to the tracked copies, then restore the real content
+afterward:
+
+```bash
+cd /mnt/<pool>/apps/pf2e-sheets/Pathfinder2e
+
+cp authelia/configuration.yml /tmp/configuration.yml.backup
+cp authelia/users_database.yml /tmp/users_database.yml.backup
+
+git update-index --no-skip-worktree authelia/configuration.yml
+git update-index --no-skip-worktree authelia/users_database.yml
+
+git checkout -- authelia/configuration.yml authelia/users_database.yml
+git checkout <the-branch-you-want>
+
+cp /tmp/configuration.yml.backup authelia/configuration.yml
+cp /tmp/users_database.yml.backup authelia/users_database.yml
+
+git update-index --skip-worktree authelia/configuration.yml
+git update-index --skip-worktree authelia/users_database.yml
+```
+
+Your live files end up byte-for-byte identical to before — nothing lost,
+regardless of how many branches you hop between. Re-run the last two lines
+any time `git status` unexpectedly starts showing these files as modified
+again (a sign the skip-worktree bit got cleared, e.g. by the sequence
+above if you stop partway through).
+
 See the root [CLAUDE.md](../CLAUDE.md) for the full build order.
