@@ -336,7 +336,7 @@ app's `users` table.
   account to admin or remove someone from the list — just the one bootstrap
   admin and the add-email form.
 
-## 9. Email delivery for TOTP/WebAuthn (SMTP2GO)
+## 9. Email delivery for TOTP/WebAuthn (Gmail)
 
 TOTP and WebAuthn registration, and password resets, all work by emailing
 the player a confirmation link. The default `authelia/configuration.yml`
@@ -352,41 +352,85 @@ your tenant's baseline MFA enforcement, not just for this one mailbox,
 unless you already have Conditional Access covering that job. Not a
 trade-off to make for one automated app mailbox.
 
-**Why SMTP2GO specifically**: a genuinely free tier (1,000 emails/month, no
-credit card) that comfortably covers a handful of players, independently
-ranked for strong deliverability, and offers AU data residency — a decent
-fit given the `.com.au` domain. (SendGrid was the original pick here but
-dropped its free tier; Brevo is a solid alternative if you outgrow this.)
+**Why Gmail, and not SendGrid, SMTP2GO, Brevo, or Mailjet (all tried
+first)** — four providers and a genuinely deep investigation before
+landing here, worth recording so nobody repeats it:
+- **SendGrid**: dropped its free tier before this got used.
+- **SMTP2GO**: a fully working manual `curl` SMTP test, yet Authelia
+  itself failed every time with `535 Incorrect authentication data`, even
+  with confirmed-correct credentials. Root cause, confirmed by reading
+  Authelia's own source (`internal/notification/smtp_auth.go`): its SMTP
+  client always tries the *strongest* AUTH mechanism the server
+  advertises, with no config option to change that — and SMTP2GO's server
+  advertises SCRAM-SHA-256, a mechanism Authelia locks onto and which
+  failed against SMTP2GO's implementation of it. `curl` succeeded only
+  because it doesn't implement SCRAM at all, so it fell through to
+  CRAM-MD5 instead — a different mechanism, which is why the manual test
+  passing didn't mean Authelia would work.
+- **Brevo**: confirmed via a direct EHLO probe to not offer SCRAM, but its
+  free plan was gone by the time this got deployed.
+- **Mailjet**: the strangest failure of the four. Its server doesn't offer
+  SCRAM either (same direct-probe check), and its free plan (200/day,
+  6,000/month, no credit card) was confirmed live against Mailjet's own
+  pricing page rather than a search result. Identical credentials
+  succeeded via `curl` using **three different AUTH mechanisms** (PLAIN,
+  CRAM-MD5, DIGEST-MD5), tested from the exact same Docker network
+  Authelia runs on (not just the TrueNAS host shell), over both STARTTLS
+  (`submission://...:587`) and implicit TLS (`submissions://...:465`) —
+  yet Authelia's own client failed with `535` every single time. Traced
+  all the way through Authelia's actual pinned dependency version
+  (`github.com/wneessen/go-mail v0.5.2`, not just its latest release) —
+  the AUTH-mechanism selection logic, the PLAIN payload's exact wire
+  format (verified byte-for-byte against a successful `curl` capture),
+  and the hostname-verification check inside `PlainAuth` — and none of it
+  explained the discrepancy. Config, env-var overrides, and the live
+  container's actual loaded file were all directly confirmed correct.
+  Best remaining theory: some server-side anti-abuse/fingerprinting
+  behavior specific to Go's TLS client on Mailjet's backend (their
+  certificate now shows `O=MAILGUN TECHNOLOGIES, INC` — Mailjet runs on
+  Mailgun's infrastructure post-acquisition) — but this was never
+  conclusively confirmed, only ruled out on every angle this project
+  controls.
 
-**Set up SMTP2GO** (smtp2go.com):
-1. **Sending → Verified Senders** — add the address you'll send from (e.g.
-   `authelia@huscroft.com.au` — must be on your **root** domain where a
-   real mailbox exists to receive the confirmation email;
-   `pathfinder.huscroft.com.au` is only web routing for the app, nothing
-   can receive mail there). Click the link SMTP2GO emails to that address.
-2. **Settings → SMTP Users → Add SMTP User** — creates a **dedicated SMTP
-   username and password**, separate from your account login. Unlike some
-   providers, SMTP2GO's username isn't a fixed literal — it's a real
-   generated credential, same as the password. Copy both.
-   (Verified Senders is enough to start sending; adding your domain under
-   **Sending → Domains** with the CNAME records they provide is worth doing
-   later for better deliverability, but isn't required at this volume.)
+Gmail is what actually works, and is also the most field-tested
+SMTP+Authelia pairing in the Authelia community itself (multiple
+first-hand reports of "works great," one specifically "for nearly a
+year"). If you ever want to revisit a dedicated transactional provider
+instead of Gmail, start by checking whether *other* Authelia users have a
+working config with it before investing time — the Mailjet investigation
+above shows that a provider looking correct on paper (right AUTH
+mechanisms, right credentials, a passing manual `curl` test) doesn't
+guarantee Authelia's specific Go SMTP client will actually work with it.
+
+**Set up a dedicated Gmail account** (not your M365 mailbox — SMTP AUTH is
+disabled by default on M365 tenants and gated behind a tenant-wide
+Security Defaults toggle not worth weakening for one app mailbox; see the
+box above):
+1. Create a new Gmail account, or use an existing personal one you're
+   happy to dedicate to this.
+2. **Google Account → Security → 2-Step Verification** — turn it on (App
+   Passwords require it).
+3. **Google Account → Security → App Passwords** — generate one (name it
+   something like "Authelia"). Copy it; it's shown only once.
 
 **Generate the secret and update the config:**
 ```bash
 cd /mnt/<pool>/apps/pf2e-sheets/Pathfinder2e/authelia
-echo -n '<your SMTP2GO SMTP password>' > secrets/smtp_password
+echo -n '<your Gmail App Password>' > secrets/smtp_password
 ```
 `authelia/configuration.yml`'s `notifier.smtp` block is already set up for
-SMTP2GO (`mail.smtp2go.com:587`). Replace the `username:` placeholder with
-your generated SMTP username directly in the file — only `password` is
-documented to support the `@/path` secret-file notation, so username stays
-as plain text here rather than assuming it works the same way. Confirm
-`sender:` matches the address you verified in step 1, then redeploy.
+Gmail (`smtp.gmail.com:587`). Replace both `<YOUR_GMAIL_ADDRESS>`
+placeholders (`username:` and inside `sender:`) with the actual Gmail
+address directly in the file — only `password` is documented to support
+the `@/path` secret-file notation, so username stays as plain text here
+rather than assuming it works the same way. Unlike the other providers
+tried above, Gmail's relay requires `sender:` to match the authenticated
+account itself (or a "Send As" alias configured in Gmail) — it won't
+relay an arbitrary custom-domain From address the way a domain-verified
+provider would. Then redeploy.
 
 Verify: trigger a TOTP or WebAuthn enrolment (§6) and confirm the email
-actually lands — check spam the first time, since a freshly verified
-sender (as opposed to a fully domain-authenticated one) can land there
-initially on some providers.
+actually lands — check spam the first time, since a freshly-used sending
+address can land there initially.
 
 See the root [CLAUDE.md](../CLAUDE.md) for the full build order.
