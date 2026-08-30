@@ -1053,3 +1053,59 @@ textarea {
     text-align: center;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Print (Phase 5)
+   -------------------------------------------------------------------------- */
+
+.sheet-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+@media print {
+  /* Nothing interactive means anything on paper — every control on the
+     sheet is a <button>, so this alone covers Edit/Save/Cancel/Add/
+     Delete/Disable/Enable, the HP steppers, the avatar's own controls,
+     and the Print button itself, without having to name each one. */
+  button {
+    display: none !important;
+  }
+
+  .site-nav,
+  .item-row--add,
+  .avatar-picker__hint {
+    display: none !important;
+  }
+
+  /* Collapsed sections are forced open by sheet.html's beforeprint
+     handler (a CSS override alone can't do this — verified). This only
+     hides the now-decorative disclosure chevron. */
+  .sheet-section > summary h2::after {
+    display: none;
+  }
+  .sheet-section > summary {
+    cursor: default;
+  }
+
+  /* Strip the parchment theme's decorative backgrounds/shadows for print
+     — clean black-on-white output, not a wasted-ink recreation of the
+     screen chrome. Borders stay, for section separation on the page. */
+  body,
+  .sheet-section,
+  .character-banner {
+    background: #fff !important;
+    box-shadow: none !important;
+  }
+  body {
+    color: #000;
+  }
+
+  /* Keep a card from splitting awkwardly across a page break where
+     avoidable. */
+  .sheet-section,
+  .character-banner {
+    break-inside: avoid;
+  }
+}

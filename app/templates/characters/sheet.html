@@ -3,6 +3,9 @@
 {% block title %}{{ character.name }}{% endblock %}
 
 {% block content %}
+  <div class="sheet-toolbar">
+    <button type="button" class="btn btn--ghost" onclick="window.print()">Print</button>
+  </div>
   {# Avatar and header render as one banner card, but stay separate HTMX
      swap targets so each still updates independently. #}
   <div class="character-banner">
@@ -16,4 +19,26 @@
   {% include "equipment/_list.html" %}
   {% include "features/_list.html" %}
   {% include "notes/_list.html" %}
+  <script>
+    // Printing a collapsed <details> section prints nothing for it — CSS
+    // alone can't override that in current Chromium (verified: neither
+    // `display: block !important` nor `revert` on its children works, the
+    // collapsed state is enforced by an internal mechanism, not a plain
+    // UA display:none rule). Force every section open for the actual
+    // print, then restore whatever the reader had collapsed afterward.
+    (function () {
+      var openBeforePrint = null;
+      window.addEventListener('beforeprint', function () {
+        var sections = document.querySelectorAll('details.sheet-section');
+        openBeforePrint = Array.prototype.map.call(sections, function (d) { return d.open; });
+        sections.forEach(function (d) { d.open = true; });
+      });
+      window.addEventListener('afterprint', function () {
+        if (!openBeforePrint) return;
+        var sections = document.querySelectorAll('details.sheet-section');
+        sections.forEach(function (d, i) { d.open = openBeforePrint[i]; });
+        openBeforePrint = null;
+      });
+    })();
+  </script>
 {% endblock %}
