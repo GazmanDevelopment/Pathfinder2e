@@ -24,6 +24,9 @@ identity_validation:
 authentication_backend:
   file:
     path: /config/users_database.yml
+    # Reload on file change instead of requiring a restart every time a
+    # player is added or a password/entry is hand-edited. Default is false.
+    watch: true
     password:
       algorithm: argon2
       argon2:
