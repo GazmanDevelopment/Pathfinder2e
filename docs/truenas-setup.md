@@ -443,4 +443,19 @@ any time `git status` unexpectedly starts showing these files as modified
 again (a sign the skip-worktree bit got cleared, e.g. by the sequence
 above if you stop partway through).
 
+**`scripts/deploy-pull.sh` automates all of the above**, plus the image
+rebuild — run it instead of the manual sequence for routine deploys:
+```bash
+# Pull the current branch (normal case — after a PR merges to main):
+scripts/deploy-pull.sh
+
+# Or switch to a specific branch (e.g. testing an unmerged fix):
+scripts/deploy-pull.sh some-branch-name
+```
+It backs up both config files, pulls or switches branch, restores them,
+re-marks skip-worktree, and runs `docker build -t pf2e-sheet:latest .`
+(auto-detecting whether `sudo` is needed for `docker` on this box). It
+only builds the image — you still need to redeploy separately (Apps UI
+restart, or `docker compose up -d --build`) to actually run it.
+
 See the root [CLAUDE.md](../CLAUDE.md) for the full build order.
