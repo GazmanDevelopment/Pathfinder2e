@@ -178,8 +178,16 @@ Each phase leaves something that runs. **Auth comes after the app works.**
 - **Phase 4c — Admin sets a local account's password.** Lets an admin type a
   starting password for a player from `/admin/users` instead of hand-editing
   Authelia's `users_database.yml` over SSH. See below.
-- **Phase 5 — Polish & safety net.** Print/export view, dataset snapshot schedule
-  for backups, optional Pathbuilder JSON import.
+- **Phase 5 — Polish & safety net.** Print/export view — **done**: a Print
+  button on the character sheet triggers the browser's own print dialog
+  (handles PDF export for free); print-specific CSS hides interactive chrome
+  and forces every collapsible section open regardless of its on-screen
+  state, since a collapsed `<details>` can't be forced open with CSS alone
+  in current browsers — verified directly, see `app/templates/characters/
+  sheet.html`'s `beforeprint`/`afterprint` handlers. No new route or
+  duplicate template; the existing sheet page adapts in place. Still
+  outstanding: a dataset snapshot schedule for backups, optional Pathbuilder
+  JSON import.
 - **Phase 6 — Tap to roll.** The dice roller: saves/skills/abilities from stored
   modifiers (no new fields); `attack_bonus`/`damage_formula` on weapons & spells;
   nat-20/nat-1 highlight; optional crit + MAP.
