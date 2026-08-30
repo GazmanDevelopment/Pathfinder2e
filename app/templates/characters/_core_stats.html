@@ -1,5 +1,5 @@
-<section id="core-stats" class="sheet-section">
-  <h2>Core Statistics</h2>
+<details id="core-stats" class="sheet-section">
+  <summary><h2>Core Statistics</h2></summary>
   <div class="stat-grid">
     {# Health band for colouring the current value. Needs both numbers and a
        positive max to mean anything; otherwise it stays unstyled. #}
@@ -36,4 +36,4 @@
   </div>
   <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character.id }}/core-stats/edit"
           hx-target="#core-stats" hx-swap="outerHTML">Edit</button>
-</section>
+</details>

@@ -207,6 +207,36 @@ a:hover {
   box-shadow: var(--shadow-raised);
 }
 
+/* Sections are <details>, collapsible by clicking/tapping the header — the
+   native marker is replaced with a chevron that matches the h2's styling
+   rather than sitting outside it. */
+.sheet-section > summary {
+  cursor: pointer;
+  list-style: none;
+}
+.sheet-section > summary::-webkit-details-marker {
+  display: none;
+}
+.sheet-section > summary h2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.sheet-section > summary h2::after {
+  content: "\25BE";
+  font-size: 0.8rem;
+  transition: transform 0.15s ease;
+}
+.sheet-section:not([open]) > summary h2::after {
+  transform: rotate(-90deg);
+}
+.sheet-section:not([open]) > summary h2 {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
 /* --- Character banner (avatar + header as one card) ---------------------- */
 
 /* The two children remain independent HTMX swap targets, so the card chrome
@@ -825,6 +855,41 @@ textarea {
   overflow-wrap: anywhere;
   color: var(--ink-muted);
   font-size: 0.92rem;
+}
+
+/* Rank suggestion dropdown (proficiencies) — a small self-contained list,
+   not the native datalist popup; see the script in _row_edit.html. */
+.rank-field {
+  position: relative;
+}
+.rank-suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin-top: 0.25rem;
+  background: #fffdf6;
+  border: 1px solid var(--gold-pale);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.rank-suggestions button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+.rank-suggestions button:hover,
+.rank-suggestions button:focus {
+  background: var(--gold-wash);
 }
 
 .item-summary {
