@@ -191,8 +191,22 @@ Each phase leaves something that runs. **Auth comes after the app works.**
   covers the SQLite DB, uploads, and Authelia's config/secrets together in
   one snapshot — pure TrueNAS UI configuration, no code; see
   `docs/truenas-setup.md` §11 for the exact steps and what a same-pool
-  snapshot does and doesn't protect against. Still outstanding: optional
-  Pathbuilder JSON import.
+  snapshot does and doesn't protect against. Optional Pathbuilder JSON
+  import — **done**: an "Import from Pathbuilder" form on the character
+  list takes a Pathbuilder build ID, fetches the real export (confirmed
+  live against `pathbuilder2e.com/json.php?id=...`, not guessed), and maps
+  it into a new character. Never computes a derived total (skill/save
+  bonus, DC, damage formula) it isn't fully confident about — those are
+  left blank rather than risk a confidently wrong number, matching this
+  project's free-form-not-a-rules-engine stance; anything with no
+  structured column (money, background, deity, casting/DC ranks) lands in
+  one consolidated summary Note instead of being silently dropped. See
+  `app/pathbuilder.py`. The reverse direction (exporting a character back
+  to a Pathbuilder-shaped JSON file, GitHub issue #34) is also done,
+  bundled in as the same field-mapping problem solved both ways — a plain
+  download from the sheet page, explicitly one-way/lossy since this app
+  tracks less structured detail than Pathbuilder does. Phase 5 is now
+  fully done.
 - **Phase 6 — Tap to roll.** The dice roller: saves/skills/abilities from stored
   modifiers (no new fields); `attack_bonus`/`damage_formula` on weapons & spells;
   nat-20/nat-1 highlight; optional crit + MAP.
