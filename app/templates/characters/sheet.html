@@ -4,6 +4,7 @@
 
 {% block content %}
   <div class="sheet-toolbar">
+    <a class="btn btn--ghost" href="/characters/{{ character.id }}/export/pathbuilder">Export (Pathbuilder)</a>
     <button type="button" class="btn btn--ghost" onclick="window.print()">Print</button>
   </div>
   {# Avatar and header render as one banner card, but stay separate HTMX

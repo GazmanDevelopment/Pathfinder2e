@@ -1,10 +1,13 @@
+import json
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import get_character_or_404
 from app.models import Character, Proficiency, User
+from app.pathbuilder import PathbuilderImportError, build_export_payload, fetch_build, apply_import
 from app.seed_data import DEFAULT_PROFICIENCY_NAMES
 from app.templating import templates
 
@@ -56,12 +59,61 @@ def create_character(request: Request, name: str = Form(...), db: Session = Depe
     return RedirectResponse(url=f"/characters/{character.id}", status_code=303)
 
 
+@router.post("/import/pathbuilder")
+def import_pathbuilder(request: Request, build_id: str = Form(...), db: Session = Depends(get_db)):
+    """Creates a new character from a Pathbuilder 2e export. See
+    app/pathbuilder.py for the field mapping and what's deliberately left
+    blank rather than guessed at.
+    """
+    try:
+        build = fetch_build(build_id)
+        character = Character(user_id=request.session["user"]["id"])
+        rows = apply_import(character, build, build_id)
+    except PathbuilderImportError as exc:
+        user = request.session["user"]
+        is_admin = user["role"] == "admin"
+        query = db.query(Character).order_by(Character.id)
+        if not is_admin:
+            query = query.filter(Character.user_id == user["id"])
+        else:
+            query = query.join(User, Character.user_id == User.id).filter(User.is_disabled.is_(False))
+        return templates.TemplateResponse(
+            "characters/list.html",
+            {
+                "request": request,
+                "characters": query.all(),
+                "is_admin_view": is_admin,
+                "viewing_owner": None,
+                "import_error": str(exc),
+            },
+        )
+
+    db.add(character)
+    db.flush()
+    for row in rows:
+        row.character_id = character.id
+        db.add(row)
+    db.commit()
+    return RedirectResponse(url=f"/characters/{character.id}", status_code=303)
+
+
 @router.get("/{character_id}")
 def character_sheet(
     request: Request, character: Character = Depends(get_character_or_404)
 ):
     return templates.TemplateResponse(
         "characters/sheet.html", {"request": request, "character": character}
+    )
+
+
+@router.get("/{character_id}/export/pathbuilder")
+def export_pathbuilder(character: Character = Depends(get_character_or_404)):
+    payload = build_export_payload(character)
+    filename = f"{(character.name or 'character').strip().replace(' ', '_')}_pathbuilder.json"
+    return Response(
+        content=json.dumps(payload, indent=2),
+        media_type="application/json",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

@@ -715,6 +715,10 @@ textarea {
   transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
   white-space: nowrap;
   line-height: 1.4;
+  /* .btn also lands on <a> (e.g. the sheet's Export link) — reset link
+     defaults so it renders identically to the <button> variants. */
+  display: inline-block;
+  text-decoration: none;
 }
 
 .btn:focus-visible {

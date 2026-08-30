@@ -21,6 +21,14 @@
       <input type="text" name="name" placeholder="New character name" required>
       <button type="submit" class="btn btn--primary">Create character</button>
     </form>
+
+    {% if import_error %}
+      <p class="form-error">{{ import_error }}</p>
+    {% endif %}
+    <form method="post" action="/characters/import/pathbuilder" class="create-character-form">
+      <input type="text" name="build_id" placeholder="Pathbuilder build ID" required>
+      <button type="submit" class="btn btn--ghost">Import from Pathbuilder</button>
+    </form>
   {% endif %}
 
   <ul id="character-list" class="item-list">
