@@ -1,13 +1,22 @@
+import re
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app import authelia_sync
+from app.config import AUTHELIA_USERS_DB_PATH
 from app.db import get_db
 from app.models import Character, User
 from app.templating import templates
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+_USERNAME_RE = re.compile(r"^[a-z0-9_-]{1,32}$")
+MIN_PASSWORD_LENGTH = 8
 
 
 def _admin_count(db: Session) -> int:
@@ -28,6 +37,7 @@ def list_users(
     request: Request,
     filter: str = "active",
     added: str | None = None,
+    password: str | None = None,
     db: Session = Depends(get_db),
 ):
     if filter not in ("active", "disabled"):
@@ -50,8 +60,10 @@ def list_users(
             "users": users,
             "filter": filter,
             "added": added,
+            "password_status": password,
             "char_counts": char_counts,
             "admin_count": _admin_count(db),
+            "authelia_configured": bool(AUTHELIA_USERS_DB_PATH),
         },
     )
 
@@ -114,3 +126,75 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
     db.delete(user)
     db.commit()
     return RedirectResponse(url=f"/admin/users?filter={filter_after}", status_code=303)
+
+
+@router.post("/users/{user_id}/set-password")
+def set_password(
+    user_id: int,
+    password: str = Form(...),
+    username: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    """Sets/replaces a local (Authelia) account's password, computing the
+    Argon2id hash and writing authelia/users_database.yml directly — see
+    app/authelia_sync.py. Replaces the old SSH + hand-edit workflow.
+
+    First call for a user: also picks and locks in `local_username` (no
+    rename flow after). If that username already exists in the live YAML
+    file — e.g. a hand-created entry from before this feature existed — and
+    its email matches this user, "adopt" it (link the username, touch only
+    the password); a mismatched email is rejected rather than silently
+    overwriting an unrelated account.
+    """
+    if not AUTHELIA_USERS_DB_PATH:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    user = _get_user_or_404(user_id, db)
+    if user.auth_source == "entra":
+        raise HTTPException(status_code=400, detail="Entra/SSO accounts don't use a local password.")
+    if len(password) < MIN_PASSWORD_LENGTH:
+        raise HTTPException(
+            status_code=400, detail=f"Password must be at least {MIN_PASSWORD_LENGTH} characters."
+        )
+
+    path = Path(AUTHELIA_USERS_DB_PATH)
+
+    if user.local_username is None:
+        candidate = username.strip().lower()
+        if not _USERNAME_RE.match(candidate):
+            raise HTTPException(
+                status_code=400,
+                detail="Username must be 1-32 characters: lowercase letters, digits, underscore, or hyphen.",
+            )
+
+        existing_entry = authelia_sync.find_entry(path, candidate)
+        if existing_entry is not None:
+            existing_email = (existing_entry.get("email") or "").strip().lower()
+            if existing_email != user.email.strip().lower():
+                raise HTTPException(
+                    status_code=400,
+                    detail="That username is already in use for a different account — choose another.",
+                )
+            # Same email: adopting a hand-created entry from before this
+            # feature existed — upsert_local_account only touches the
+            # password for an already-existing entry, so displayname/
+            # groups/disabled are left as they already are.
+
+        user.local_username = candidate
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            raise HTTPException(status_code=400, detail="That username is already taken.")
+    else:
+        candidate = user.local_username
+
+    authelia_sync.upsert_local_account(
+        path,
+        username=candidate,
+        display_name=user.display_name or user.email,
+        email=user.email,
+        password_hash=authelia_sync.hash_password(password),
+    )
+
+    return RedirectResponse(url="/admin/users?password=set", status_code=303)

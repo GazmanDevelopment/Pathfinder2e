@@ -1,6 +1,16 @@
 # Authelia file backend — TEMPLATE. One entry per player.
 #
-# Generate each password hash on the box (never store plaintext):
+# Once Phase 4c is deployed, the app manages entries directly via
+# /admin/users' "Set password" action — it computes the Argon2id hash
+# itself and writes/updates this file (see app/authelia_sync.py). That
+# includes any entry created here by hand: the app matches by username and
+# email, so the first "Set password" click for an existing hand-created
+# entry like this one updates its password in place rather than erroring or
+# duplicating it. Its next app-driven write will reformat this file
+# (comments included) — expect to lose this header once that happens.
+#
+# To still hand-edit an entry (or bootstrap before Phase 4c is deployed),
+# generate the password hash on the box (never store plaintext):
 #   docker run --rm authelia/authelia:4.38 \
 #     authelia crypto hash generate argon2 --password 'their-password'
 # then paste the resulting $argon2id$... string as `password` below.

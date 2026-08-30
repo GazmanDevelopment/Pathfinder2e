@@ -12,7 +12,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.auth import AccountDisabled, NotAuthenticated, require_admin, require_login
 from app.config import SESSION_HTTPS_ONLY, SESSION_SECRET, UPLOAD_DIR
-from app.db import Base, engine
+from app.db import Base, engine, run_startup_migrations
 from app.deps import get_character_or_404
 from app.routers import admin, auth, avatar, characters, equipment, features, notes, proficiencies, spells
 from app.templating import templates
@@ -35,6 +35,7 @@ logger = logging.getLogger("app")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     Base.metadata.create_all(bind=engine)
+    run_startup_migrations(engine)
     yield
 
 

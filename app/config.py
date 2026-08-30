@@ -26,6 +26,13 @@ APP_BASE_URL = os.environ.get("APP_BASE_URL", "").rstrip("/")
 # set SESSION_HTTPS_ONLY=false for plain-http local dev.
 SESSION_HTTPS_ONLY = os.environ.get("SESSION_HTTPS_ONLY", "true").lower() != "false"
 
+# Path to Authelia's users_database.yml, mounted read-write into this
+# container (Phase 4c). Unset hides the "Set password" admin action
+# entirely, same pattern as an unconfigured OIDC provider hiding its
+# sign-in button — there's no real dev/local equivalent since it means
+# writing into a real Authelia file backend.
+AUTHELIA_USERS_DB_PATH = os.environ.get("AUTHELIA_USERS_DB_PATH", "")
+
 # OIDC providers, keyed by the name used in /auth/{provider}/... URLs. Entra
 # joins this dict in Phase 3; the login page and routes are already generic
 # over it. `label` is what the "Sign in with …" button shows.

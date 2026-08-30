@@ -10,6 +10,9 @@
   {% elif added == "already-registered" %}
     <p class="form-success">That email is already registered.</p>
   {% endif %}
+  {% if password_status == "set" %}
+    <p class="form-success">Password set.</p>
+  {% endif %}
 
   <form method="post" action="/admin/users" class="create-character-form">
     <input type="email" name="email" placeholder="player@example.com" required>
@@ -35,6 +38,7 @@
         <span class="item-field">
           <span class="tag">{{ user.role }}</span>
           {% if user.auth_source %}<span class="tag">{{ user.auth_source }}</span>{% endif %}
+          {% if user.local_username %}<span class="tag">local: {{ user.local_username }}</span>{% endif %}
           {% if char_count %}<span class="tag">{{ char_count }} character{{ "s" if char_count != 1 }}</span>{% endif %}
         </span>
         <span class="item-actions">
@@ -54,6 +58,20 @@
                     {% elif is_last_admin %}disabled title="Can't delete the last remaining admin"{% endif %}>Delete</button>
           </form>
         </span>
+        {% if authelia_configured and user.auth_source != "entra" %}
+          <details class="admin-set-password">
+            <summary>{{ "Change local password" if user.local_username else "Set local password" }}</summary>
+            <form method="post" action="/admin/users/{{ user.id }}/set-password" class="inline-form">
+              {% if user.local_username %}
+                <span class="item-field">Local username: <strong>{{ user.local_username }}</strong></span>
+              {% else %}
+                <input type="text" name="username" placeholder="local username" pattern="[a-z0-9_-]{1,32}" required>
+              {% endif %}
+              <input type="password" name="password" placeholder="new password" minlength="8" required>
+              <button type="submit" class="btn btn--primary">Save password</button>
+            </form>
+          </details>
+        {% endif %}
       </li>
     {% else %}
       <li>No {{ filter }} users.</li>

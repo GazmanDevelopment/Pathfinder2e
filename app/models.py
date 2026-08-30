@@ -25,6 +25,13 @@ class User(Base):
     role: Mapped[str] = mapped_column(String, nullable=False, default="member")
     auth_source: Mapped[str | None] = mapped_column(String, nullable=True)
     is_disabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # The short Authelia login handle (e.g. "gareth") for a local account,
+    # set once via /admin/users' "Set password" action (Phase 4c) and never
+    # renamed after. None for Entra-only or never-set-up users. Existing
+    # databases need app/db.py's run_startup_migrations() to add this column
+    # and its unique index — declaring it here alone doesn't retrofit a live
+    # table (see that function's docstring).
+    local_username: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 

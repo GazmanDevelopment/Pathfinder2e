@@ -220,9 +220,17 @@ from `.env`.
 >       OIDC_AUTHELIA_ISSUER: "https://auth.pathfinder.huscroft.com.au"
 >       OIDC_AUTHELIA_CLIENT_ID: "pf2e-sheet"
 >       OIDC_AUTHELIA_CLIENT_SECRET: "<the PLAINTEXT client secret from step 3>"
+>       # Phase 4c: lets an admin set a local account's password from
+>       # /admin/users instead of hand-editing users_database.yml over SSH.
+>       AUTHELIA_USERS_DB_PATH: "/authelia-config/users_database.yml"
 >     volumes:
 >       - /mnt/<pool>/apps/pf2e-sheets/Pathfinder2e/data:/data
 >       - /mnt/<pool>/apps/pf2e-sheets/Pathfinder2e/uploads:/uploads
+>       # Read-write — the app writes directly into this directory. Real,
+>       # deliberate increase in blast radius (Authelia's whole config
+>       # directory, not just users_database.yml) so the write can be atomic
+>       # (temp file + rename needs to share a filesystem with its target).
+>       - /mnt/<pool>/apps/pf2e-sheets/Pathfinder2e/authelia:/authelia-config
 >
 >   authelia:
 >     image: authelia/authelia:4.38   # pulled from Docker Hub, not built — never the problem
