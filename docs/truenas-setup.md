@@ -336,7 +336,7 @@ app's `users` table.
   account to admin or remove someone from the list — just the one bootstrap
   admin and the add-email form.
 
-## 9. Email delivery for TOTP/WebAuthn (SMTP2GO)
+## 9. Email delivery for TOTP/WebAuthn (Brevo)
 
 TOTP and WebAuthn registration, and password resets, all work by emailing
 the player a confirmation link. The default `authelia/configuration.yml`
@@ -352,37 +352,49 @@ your tenant's baseline MFA enforcement, not just for this one mailbox,
 unless you already have Conditional Access covering that job. Not a
 trade-off to make for one automated app mailbox.
 
-**Why SMTP2GO specifically**: a genuinely free tier (1,000 emails/month, no
-credit card) that comfortably covers a handful of players, independently
-ranked for strong deliverability, and offers AU data residency — a decent
-fit given the `.com.au` domain. (SendGrid was the original pick here but
-dropped its free tier; Brevo is a solid alternative if you outgrow this.)
+**Why Brevo, and not SendGrid or SMTP2GO (both tried first)**: SendGrid
+dropped its free tier. SMTP2GO looked right (genuine free tier, AU data
+residency) and got as far as a fully working manual `curl` SMTP test — but
+Authelia itself still failed every time with `535 Incorrect authentication
+data`, even with confirmed-correct credentials. Root cause, confirmed by
+reading Authelia's own source
+(`internal/notification/smtp_auth.go`): its SMTP client always tries the
+*strongest* AUTH mechanism the server advertises, with no config option to
+change that — and SMTP2GO's server advertises SCRAM-SHA-256, a mechanism
+Authelia locks onto and which failed against SMTP2GO's implementation of
+it. `curl` succeeded only because it doesn't implement SCRAM at all, so it
+fell through to CRAM-MD5 instead — a different mechanism, which is why the
+manual test passing didn't mean Authelia would work. Brevo's SMTP server
+doesn't advertise SCRAM (confirmed by probing it directly), so Authelia
+falls through to a mechanism that actually works. Free tier is 300
+emails/day (9,000/month), no credit card, comfortably covering a handful
+of players — if you ever hit that ceiling, Mailjet (200/day, 6,000/month,
+also no SCRAM) is a same-shape fallback.
 
-**Set up SMTP2GO** (smtp2go.com):
-1. **Sending → Verified Senders** — add the address you'll send from (e.g.
-   `authelia@huscroft.com.au` — must be on your **root** domain where a
-   real mailbox exists to receive the confirmation email;
+**Set up Brevo** (brevo.com):
+1. **Senders, Domains & Dedicated IPs → Senders** — add the address you'll
+   send from (e.g. `authelia@huscroft.com.au` — must be on your **root**
+   domain where a real mailbox exists to receive the confirmation email;
    `pathfinder.huscroft.com.au` is only web routing for the app, nothing
-   can receive mail there). Click the link SMTP2GO emails to that address.
-2. **Settings → SMTP Users → Add SMTP User** — creates a **dedicated SMTP
-   username and password**, separate from your account login. Unlike some
-   providers, SMTP2GO's username isn't a fixed literal — it's a real
-   generated credential, same as the password. Copy both.
-   (Verified Senders is enough to start sending; adding your domain under
-   **Sending → Domains** with the CNAME records they provide is worth doing
-   later for better deliverability, but isn't required at this volume.)
+   can receive mail there). Click the link Brevo emails to that address.
+2. **SMTP & API → SMTP tab** — click to generate an **SMTP key** (*not* an
+   API key — those are a different credential type and won't work here).
+   The page shows a **login** string (looks like
+   `7xxxxx@smtp-brevo.com` — this is *not* your Brevo account email) and
+   the generated **SMTP key**. Copy both; the key is only shown once.
 
 **Generate the secret and update the config:**
 ```bash
 cd /mnt/<pool>/apps/pf2e-sheets/Pathfinder2e/authelia
-echo -n '<your SMTP2GO SMTP password>' > secrets/smtp_password
+echo -n '<your Brevo SMTP key>' > secrets/smtp_password
 ```
 `authelia/configuration.yml`'s `notifier.smtp` block is already set up for
-SMTP2GO (`mail.smtp2go.com:587`). Replace the `username:` placeholder with
-your generated SMTP username directly in the file — only `password` is
-documented to support the `@/path` secret-file notation, so username stays
-as plain text here rather than assuming it works the same way. Confirm
-`sender:` matches the address you verified in step 1, then redeploy.
+Brevo (`smtp-relay.brevo.com:587`). Replace the `username:` placeholder
+with the SMTP login string from step 2 (not your account email) directly
+in the file — only `password` is documented to support the `@/path`
+secret-file notation, so username stays as plain text here rather than
+assuming it works the same way. Confirm `sender:` matches the address you
+verified in step 1, then redeploy.
 
 Verify: trigger a TOTP or WebAuthn enrolment (§6) and confirm the email
 actually lands — check spam the first time, since a freshly verified

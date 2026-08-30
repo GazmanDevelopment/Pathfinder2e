@@ -46,25 +46,41 @@ storage:
   local:
     path: /config/db.sqlite3
 
-# SMTP via SMTP2GO — TOTP/WebAuthn registration and password-reset links
-# need to actually reach players' inboxes, which the filesystem notifier
-# (writes to a local file on the box) can't do. Unlike some providers,
-# SMTP2GO's username is NOT a fixed literal — it's a real credential you
-# generate under Settings > SMTP Users, alongside the password. Only
-# `password` documents @/path secret-file support in Authelia's own docs
-# (confirmed before writing this — the earlier RSA key field silently
-# treated an unsupported @/path as literal text, so this isn't assumed
-# anymore); `username` goes here as plain text instead.
+# SMTP via Brevo — TOTP/WebAuthn registration and password-reset links need
+# to actually reach players' inboxes, which the filesystem notifier (writes
+# to a local file on the box) can't do.
+#
+# NOT SMTP2GO: SMTP2GO's server advertises SCRAM-SHA-256 in its EHLO
+# capabilities, and Authelia's SMTP client (github.com/wneessen/go-mail)
+# always prefers the strongest mechanism the server offers — SCRAM-SHA-256
+# here — with no config option to make it prefer something else. That
+# SCRAM attempt failed against SMTP2GO with "535 Incorrect authentication
+# data" even with fully correct credentials (verified independently via a
+# manual `curl` SMTP AUTH test, which succeeded — curl doesn't implement
+# SCRAM at all, so it fell through to CRAM-MD5 and worked). Confirmed by
+# reading Authelia's own source (internal/notification/smtp_auth.go), not
+# assumed. Brevo's server doesn't offer SCRAM at all (confirmed by probing
+# its EHLO response directly), so Authelia falls through to a mechanism
+# that actually works. See docs/truenas-setup.md §9 for the full story.
+#
+# Username is NOT your Brevo account email — it's the specific SMTP login
+# string shown on the SMTP & API Keys page (looks like
+# "7xxxxx@smtp-brevo.com"), generated alongside an SMTP key (not an API
+# key — those are different credential types, same trap as SMTP2GO's
+# separate API keys vs SMTP Users). Only `password` documents @/path
+# secret-file support in Authelia's own docs (confirmed before writing
+# this — the earlier RSA key field silently treated an unsupported @/path
+# as literal text, so this isn't assumed anymore); `username` goes here as
+# plain text instead.
 #
 # Sender is on the root domain (huscroft.com.au), not pathfinder.huscroft.com.au
 # — that subdomain is only web routing for the app, with no real mailbox to
-# receive SMTP2GO's Verified Sender confirmation email. Use a real,
-# receivable M365 mailbox address here, verified in SMTP2GO before this
-# will deliver.
+# receive Brevo's sender-verification email. Use a real, receivable M365
+# mailbox address here, verified in Brevo before this will deliver.
 notifier:
   smtp:
-    address: "submission://mail.smtp2go.com:587"
-    username: "<YOUR_SMTP2GO_SMTP_USERNAME>"
+    address: "submission://smtp-relay.brevo.com:587"
+    username: "<YOUR_BREVO_SMTP_LOGIN>"
     password: "@/config/secrets/smtp_password"
     sender: "Character Sheet <authelia@huscroft.com.au>"
     identifier: "huscroft.com.au"
