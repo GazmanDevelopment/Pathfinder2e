@@ -21,9 +21,17 @@ services:
       OIDC_ENTRA_ISSUER: "${OIDC_ENTRA_ISSUER}"       # https://login.microsoftonline.com/<tenant>/v2.0
       OIDC_ENTRA_CLIENT_ID: "${OIDC_ENTRA_CLIENT_ID}"
       OIDC_ENTRA_CLIENT_SECRET: "${OIDC_ENTRA_CLIENT_SECRET}"
+      # Phase 4c: lets an admin set a local account's password from
+      # /admin/users instead of hand-editing users_database.yml over SSH.
+      # Real, deliberate increase in blast radius — read-write access to
+      # Authelia's whole config directory, not just this one file, so the
+      # app can write it atomically (temp file + rename needs to share a
+      # filesystem with its target). Unset to hide the feature entirely.
+      AUTHELIA_USERS_DB_PATH: "/authelia-config/users_database.yml"
     volumes:
       - ./data:/data
       - ./uploads:/uploads
+      - ./authelia:/authelia-config
 
   authelia:
     image: authelia/authelia:4.38
