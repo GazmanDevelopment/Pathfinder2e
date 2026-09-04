@@ -1,36 +1,33 @@
-<section id="ability-scores" class="sheet-section sheet-section--edit">
-  <h2>Ability Scores</h2>
-  <form hx-put="/characters/{{ character.id }}/ability-scores" hx-target="#ability-scores" hx-swap="outerHTML" class="field-grid ability-grid">
-    {% for prefix, label in [
-      ("str", "STR"), ("dex", "DEX"), ("con", "CON"),
-      ("int", "INT"), ("wis", "WIS"), ("cha", "CHA"),
-    ] %}
-      <fieldset>
-        <legend>{{ label }}</legend>
-        <label>Score <input type="number" name="{{ prefix }}_score" class="ability-score-input" data-mod-target="{{ prefix }}_mod"
-               value="{{ character[prefix ~ '_score'] if character[prefix ~ '_score'] is not none else '' }}"></label>
-        <label>Mod <input type="number" name="{{ prefix }}_mod"
-               value="{{ character[prefix ~ '_mod'] if character[prefix ~ '_mod'] is not none else '' }}"></label>
-      </fieldset>
-    {% endfor %}
-    <div class="item-actions">
-      <button type="submit" class="btn btn--primary">Save</button>
-      <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character.id }}/ability-scores"
-              hx-target="#ability-scores" hx-swap="outerHTML">Cancel</button>
-    </div>
-  </form>
-  <script>
-    // Suggests the standard (score-10)//2 modifier when its field is still
-    // empty. Never overwrites a value already present — a GM-granted flat
-    // mod override always wins.
-    document.querySelectorAll('.ability-score-input').forEach(function (input) {
-      input.addEventListener('input', function () {
-        var modInput = document.querySelector('[name="' + input.dataset.modTarget + '"]');
-        if (!modInput || modInput.value !== '') return;
-        var score = parseInt(input.value, 10);
-        if (Number.isNaN(score)) return;
-        modInput.value = Math.floor((score - 10) / 2);
-      });
+<form hx-put="/characters/{{ character.id }}/ability-scores" hx-target="#ability-scores-body" hx-swap="innerHTML" class="field-grid ability-grid">
+  {% for prefix, label in [
+    ("str", "STR"), ("dex", "DEX"), ("con", "CON"),
+    ("int", "INT"), ("wis", "WIS"), ("cha", "CHA"),
+  ] %}
+    <fieldset>
+      <legend>{{ label }}</legend>
+      <label>Score <input type="number" name="{{ prefix }}_score" class="ability-score-input" data-mod-target="{{ prefix }}_mod"
+             value="{{ character[prefix ~ '_score'] if character[prefix ~ '_score'] is not none else '' }}"></label>
+      <label>Mod <input type="number" name="{{ prefix }}_mod"
+             value="{{ character[prefix ~ '_mod'] if character[prefix ~ '_mod'] is not none else '' }}"></label>
+    </fieldset>
+  {% endfor %}
+  <div class="item-actions">
+    <button type="submit" class="btn btn--primary">Save</button>
+    <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character.id }}/ability-scores"
+            hx-target="#ability-scores-body" hx-swap="innerHTML">Cancel</button>
+  </div>
+</form>
+<script>
+  // Suggests the standard (score-10)//2 modifier when its field is still
+  // empty. Never overwrites a value already present — a GM-granted flat
+  // mod override always wins.
+  document.querySelectorAll('.ability-score-input').forEach(function (input) {
+    input.addEventListener('input', function () {
+      var modInput = document.querySelector('[name="' + input.dataset.modTarget + '"]');
+      if (!modInput || modInput.value !== '') return;
+      var score = parseInt(input.value, 10);
+      if (Number.isNaN(score)) return;
+      modInput.value = Math.floor((score - 10) / 2);
     });
-  </script>
-</section>
+  });
+</script>

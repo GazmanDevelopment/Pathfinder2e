@@ -2,7 +2,18 @@
   <div class="item-summary">
     <strong>{{ spell.name }}</strong>
     {% if spell.rank %}<span class="tag">{{ spell.rank }}</span>{% endif %}
-    {% if spell.action_cost %}<span class="tag">{{ spell.action_cost }}</span>{% endif %}
+    {% set action_label = spell.action_cost | action_cost_tooltip %}
+    {% if spell.action_cost %}
+      {% if action_label %}
+        {# A real <button>, not a <span>: its CSS tooltip shows on :focus as
+           well as :hover, and tapping a button naturally focuses it on
+           mobile — this app is built for phone use at the table (issue
+           #40), where a plain title="" attribute tooltip never shows. #}
+        <button type="button" class="tag tag--tooltip" data-tooltip="{{ action_label }}" aria-label="{{ action_label }}">{{ spell.action_cost }}</button>
+      {% else %}
+        <span class="tag">{{ spell.action_cost }}</span>
+      {% endif %}
+    {% endif %}
     {% if spell.range %}<span class="tag">Range {{ spell.range }}</span>{% endif %}
     {% if spell.uses %}<span class="tag">Uses {{ spell.uses }}</span>{% endif %}
     {% if spell.attack_bonus is not none %}<span class="tag">Atk {{ "%+d"|format(spell.attack_bonus) }}</span>{% endif %}

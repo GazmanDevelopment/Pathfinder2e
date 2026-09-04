@@ -168,8 +168,12 @@ def save_header(
 
 @router.get("/{character_id}/core-stats")
 def show_core_stats(request: Request, character: Character = Depends(get_character_or_404)):
+    # Renders only the inner body (issue #39) — the outer <details> shell is
+    # rendered once by _core_stats.html at initial page load and never
+    # touched again, so its open/closed state survives every subsequent
+    # Cancel/HP-adjust/Save here.
     return templates.TemplateResponse(
-        "characters/_core_stats.html", {"request": request, "character": character}
+        "characters/_core_stats_body.html", {"request": request, "character": character}
     )
 
 
@@ -189,7 +193,7 @@ def adjust_hp(
     character.hp_current = (character.hp_current or 0) + delta
     db.commit()
     return templates.TemplateResponse(
-        "characters/_core_stats.html", {"request": request, "character": character}
+        "characters/_core_stats_body.html", {"request": request, "character": character}
     )
 
 
@@ -228,14 +232,15 @@ def save_core_stats(
     character.hero_points = _int_or_none(hero_points)
     db.commit()
     return templates.TemplateResponse(
-        "characters/_core_stats.html", {"request": request, "character": character}
+        "characters/_core_stats_body.html", {"request": request, "character": character}
     )
 
 
 @router.get("/{character_id}/ability-scores")
 def show_ability_scores(request: Request, character: Character = Depends(get_character_or_404)):
+    # See show_core_stats' comment above — same issue #39 fix.
     return templates.TemplateResponse(
-        "characters/_ability_scores.html", {"request": request, "character": character}
+        "characters/_ability_scores_body.html", {"request": request, "character": character}
     )
 
 
@@ -278,5 +283,5 @@ def save_ability_scores(
     character.cha_mod = _int_or_none(cha_mod)
     db.commit()
     return templates.TemplateResponse(
-        "characters/_ability_scores.html", {"request": request, "character": character}
+        "characters/_ability_scores_body.html", {"request": request, "character": character}
     )

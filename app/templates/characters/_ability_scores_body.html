@@ -1,0 +1,18 @@
+<div class="stat-grid">
+  {% for label, score, mod in [
+    ("STR", character.str_score, character.str_mod),
+    ("DEX", character.dex_score, character.dex_mod),
+    ("CON", character.con_score, character.con_mod),
+    ("INT", character.int_score, character.int_mod),
+    ("WIS", character.wis_score, character.wis_mod),
+    ("CHA", character.cha_score, character.cha_mod),
+  ] %}
+    <div class="stat">
+      <span class="stat-label">{{ label }}</span>
+      <span class="stat-value">{{ score if score is not none else "—" }}</span>
+      <span class="stat-sub">{{ "%+d"|format(mod) if mod is not none else "—" }}</span>
+    </div>
+  {% endfor %}
+</div>
+<button type="button" class="btn btn--ghost" hx-get="/characters/{{ character.id }}/ability-scores/edit"
+        hx-target="#ability-scores-body" hx-swap="innerHTML">Edit</button>
