@@ -8,7 +8,15 @@
     {% if item.damage_formula %}<span class="tag">Dmg {{ item.damage_formula }}</span>{% endif %}
     {% if item.agile %}<span class="tag">Agile</span>{% endif %}
   </div>
-  {% if item.notes %}<p class="item-effect">{{ item.notes }}</p>{% endif %}
+  {% if item.notes %}<p class="item-effect ql-editor">{{ item.notes | rich_text }}</p>{% endif %}
+  {% if item.reference_id and item.reference and item.reference.source_version != item.reference_version %}
+    <div class="reference-badge">
+      <span class="tag tag--reference">Book updated</span>
+      <button type="button" class="btn btn--ghost btn--small"
+              hx-get="/characters/{{ character_id }}/equipment/{{ item.id }}/edit?refresh_from_reference=1"
+              hx-target="#equipment-row-{{ item.id }}" hx-swap="outerHTML">Refresh from library</button>
+    </div>
+  {% endif %}
   <div class="item-actions">
     <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/equipment/{{ item.id }}/edit"
             hx-target="#equipment-row-{{ item.id }}" hx-swap="outerHTML">Edit</button>

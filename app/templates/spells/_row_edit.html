@@ -1,15 +1,28 @@
 <li id="{{ 'spell-row-' ~ spell.id if spell else 'spell-row-new' }}" class="item-row item-row--card item-row--edit">
+  {% set src = prefill or spell %}
+  {% if not spell %}
+  <span class="reference-search">
+    <input type="text" name="q" class="reference-search-input" autocomplete="off"
+           placeholder="Search reference library…"
+           hx-get="/characters/{{ character_id }}/spells/reference-search"
+           hx-trigger="keyup changed delay:300ms" hx-target="next .reference-results" hx-swap="innerHTML">
+    <div class="reference-results" hidden></div>
+  </span>
+  {% endif %}
   <div class="field-grid">
-    <input type="text" name="name" value="{{ spell.name if spell else '' }}" placeholder="Spell name" required>
-    <input type="text" name="rank" value="{{ spell.rank or '' if spell else '' }}" placeholder="Rank (e.g. Cantrip, 3rd)">
-    <input type="text" name="action_cost" value="{{ spell.action_cost or '' if spell else '' }}" placeholder="Action cost">
-    <input type="text" name="range" value="{{ spell.range or '' if spell else '' }}" placeholder="Range">
-    <input type="text" name="uses" value="{{ spell.uses or '' if spell else '' }}" placeholder="Uses / slots">
+    <input type="text" name="name" value="{{ src.name if src else '' }}" placeholder="Spell name" required>
+    <input type="text" name="rank" value="{{ src.rank or '' if src else '' }}" placeholder="Rank (e.g. Cantrip, 3rd)">
+    <input type="text" name="action_cost" value="{{ src.action_cost or '' if src else '' }}" placeholder="Action cost">
+    <input type="text" name="range" value="{{ src.range or '' if src else '' }}" placeholder="Range">
+    <input type="text" name="uses" value="{{ src.uses or '' if src else '' }}" placeholder="Uses / slots">
     <input type="text" name="flags" value="{{ spell.flags or '' if spell else '' }}" placeholder="Flags">
+    <!-- attack_bonus is never prefilled from the reference library — it depends on the caster's own stats, not the spell itself. -->
     <input type="number" name="attack_bonus" value="{{ spell.attack_bonus if spell and spell.attack_bonus is not none else '' }}" placeholder="Attack bonus">
-    <input type="text" name="damage_formula" value="{{ spell.damage_formula or '' if spell else '' }}" placeholder="Damage (e.g. 2d4+2)">
+    <input type="text" name="damage_formula" value="{{ src.damage_formula or '' if src else '' }}" placeholder="Damage (e.g. 2d4+2)">
   </div>
-  <textarea name="effect" placeholder="Effect">{{ spell.effect or '' if spell else '' }}</textarea>
+  <textarea name="effect" placeholder="Effect">{{ src.effect or '' if src else '' }}</textarea>
+  <input type="hidden" name="reference_id" value="{{ prefill.id if prefill else (spell.reference_id if spell and spell.reference_id else '') }}">
+  <input type="hidden" name="reference_version" value="{{ prefill.source_version if prefill else (spell.reference_version if spell and spell.reference_version else '') }}">
   <div class="item-actions">
     {% if spell %}
       <button type="button" class="btn btn--primary" hx-put="/characters/{{ character_id }}/spells/{{ spell.id }}"
@@ -23,4 +36,32 @@
               hx-target="closest li" hx-swap="outerHTML">Cancel</button>
     {% endif %}
   </div>
+  {% if not spell %}
+  <script>
+    (function () {
+      // Nested inside the <li> it operates on — a sibling placement after
+      // </li> silently fails (document.currentScript.closest('li') only
+      // walks ancestors), a bug this app has hit and fixed twice already.
+      var li = document.currentScript.closest('li');
+      var input = li.querySelector('.reference-search-input');
+      var box = li.querySelector('.reference-results');
+      if (!input || !box) return;
+
+      input.addEventListener('focus', function () { box.hidden = false; });
+      input.addEventListener('blur', function () { box.hidden = true; });
+      // Event delegation on the stable `box` element, not on individual
+      // result buttons — htmx replaces those on every keystroke search, so
+      // listeners attached directly to them would be thrown away too.
+      box.addEventListener('mousedown', function (event) {
+        if (event.target.closest('.reference-result')) {
+          // Keeps the input focused (suppresses blur) so htmx's own
+          // click-triggered request still fires normally instead of
+          // racing the blur-hide, same fix as the proficiencies rank
+          // dropdown.
+          event.preventDefault();
+        }
+      });
+    })();
+  </script>
+  {% endif %}
 </li>

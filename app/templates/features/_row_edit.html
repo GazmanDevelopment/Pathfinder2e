@@ -1,8 +1,18 @@
 <li id="{{ 'feature-row-' ~ feature.id if feature else 'feature-row-new' }}" class="item-row item-row--card item-row--edit">
+  {% set src = prefill or feature %}
+  {% if not feature %}
+  <span class="reference-search">
+    <input type="text" name="q" class="reference-search-input" autocomplete="off"
+           placeholder="Search reference library…"
+           hx-get="/characters/{{ character_id }}/features/reference-search"
+           hx-trigger="keyup changed delay:300ms" hx-target="next .reference-results" hx-swap="innerHTML">
+    <div class="reference-results" hidden></div>
+  </span>
+  {% endif %}
   <div class="field-grid">
-    <input type="text" name="name" value="{{ feature.name if feature else '' }}" placeholder="Feature name" required>
+    <input type="text" name="name" value="{{ src.name if src else '' }}" placeholder="Feature name" required>
     <input type="text" name="source" value="{{ feature.source or '' if feature else '' }}" list="feature-source-suggestions" placeholder="Source">
-    <input type="number" name="level_gained" value="{{ feature.level_gained if feature and feature.level_gained is not none else '' }}" placeholder="Level gained">
+    <input type="number" name="level_gained" value="{{ src.level_gained if src and src.level_gained is not none else '' }}" placeholder="Level gained">
   </div>
   <datalist id="feature-source-suggestions">
     <option value="Ancestry">
@@ -12,7 +22,9 @@
     <option value="Feat">
     <option value="Archetype">
   </datalist>
-  <textarea name="effect" placeholder="Effect">{{ feature.effect or '' if feature else '' }}</textarea>
+  <textarea name="effect" placeholder="Effect">{{ src.effect or '' if src else '' }}</textarea>
+  <input type="hidden" name="reference_id" value="{{ prefill.id if prefill else (feature.reference_id if feature and feature.reference_id else '') }}">
+  <input type="hidden" name="reference_version" value="{{ prefill.source_version if prefill else (feature.reference_version if feature and feature.reference_version else '') }}">
   <div class="item-actions">
     {% if feature %}
       <button type="button" class="btn btn--primary" hx-put="/characters/{{ character_id }}/features/{{ feature.id }}"
@@ -26,4 +38,22 @@
               hx-target="closest li" hx-swap="outerHTML">Cancel</button>
     {% endif %}
   </div>
+  {% if not feature %}
+  <script>
+    (function () {
+      var li = document.currentScript.closest('li');
+      var input = li.querySelector('.reference-search-input');
+      var box = li.querySelector('.reference-results');
+      if (!input || !box) return;
+
+      input.addEventListener('focus', function () { box.hidden = false; });
+      input.addEventListener('blur', function () { box.hidden = true; });
+      box.addEventListener('mousedown', function (event) {
+        if (event.target.closest('.reference-result')) {
+          event.preventDefault();
+        }
+      });
+    })();
+  </script>
+  {% endif %}
 </li>

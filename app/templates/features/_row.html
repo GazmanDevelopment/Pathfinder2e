@@ -4,7 +4,15 @@
     {% if feature.source %}<span class="tag">{{ feature.source }}</span>{% endif %}
     {% if feature.level_gained is not none %}<span class="tag">Level {{ feature.level_gained }}</span>{% endif %}
   </div>
-  {% if feature.effect %}<p class="item-effect">{{ feature.effect }}</p>{% endif %}
+  {% if feature.effect %}<p class="item-effect ql-editor">{{ feature.effect | rich_text }}</p>{% endif %}
+  {% if feature.reference_id and feature.reference and feature.reference.source_version != feature.reference_version %}
+    <div class="reference-badge">
+      <span class="tag tag--reference">Book updated</span>
+      <button type="button" class="btn btn--ghost btn--small"
+              hx-get="/characters/{{ character_id }}/features/{{ feature.id }}/edit?refresh_from_reference=1"
+              hx-target="#feature-row-{{ feature.id }}" hx-swap="outerHTML">Refresh from library</button>
+    </div>
+  {% endif %}
   <div class="item-actions">
     <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/features/{{ feature.id }}/edit"
             hx-target="#feature-row-{{ feature.id }}" hx-swap="outerHTML">Edit</button>

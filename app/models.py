@@ -126,8 +126,18 @@ class Spell(Base):
     flags: Mapped[str | None] = mapped_column(String, nullable=True)
     attack_bonus: Mapped[int | None] = mapped_column(Integer, nullable=True)
     damage_formula: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Set only when this row was prefilled from reference_library (Phase 7).
+    # reference_version is a snapshot of the library entry's source_version
+    # at copy time — existing databases need run_startup_migrations() to add
+    # these two columns, declaring them here alone doesn't retrofit a live
+    # table (see that function's docstring).
+    reference_id: Mapped[int | None] = mapped_column(
+        ForeignKey("reference_library.id"), nullable=True
+    )
+    reference_version: Mapped[str | None] = mapped_column(String, nullable=True)
 
     character: Mapped["Character"] = relationship(back_populates="spells")
+    reference: Mapped["ReferenceLibrary | None"] = relationship(viewonly=True)
 
 
 class Equipment(Base):
@@ -145,8 +155,14 @@ class Equipment(Base):
     attack_bonus: Mapped[int | None] = mapped_column(Integer, nullable=True)
     damage_formula: Mapped[str | None] = mapped_column(String, nullable=True)
     agile: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # See Spell.reference_id/reference_version above — same Phase 7 pattern.
+    reference_id: Mapped[int | None] = mapped_column(
+        ForeignKey("reference_library.id"), nullable=True
+    )
+    reference_version: Mapped[str | None] = mapped_column(String, nullable=True)
 
     character: Mapped["Character"] = relationship(back_populates="equipment")
+    reference: Mapped["ReferenceLibrary | None"] = relationship(viewonly=True)
 
 
 class Feature(Base):
@@ -160,8 +176,52 @@ class Feature(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     effect: Mapped[str | None] = mapped_column(Text, nullable=True)
     level_gained: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # See Spell.reference_id/reference_version above — same Phase 7 pattern.
+    reference_id: Mapped[int | None] = mapped_column(
+        ForeignKey("reference_library.id"), nullable=True
+    )
+    reference_version: Mapped[str | None] = mapped_column(String, nullable=True)
 
     character: Mapped["Character"] = relationship(back_populates="features")
+    reference: Mapped["ReferenceLibrary | None"] = relationship(viewonly=True)
+
+
+class ReferenceLibrary(Base):
+    """Read-only, seeded from a vendored ingest snapshot (see
+    scripts/ingest_reference_library.py and app/db.py's
+    seed_reference_library()) — never written to by the app itself. A
+    prefill source for Spell/Equipment/Feature rows, copied in and then
+    fully independent; never a constraint (CLAUDE.md's free-form philosophy).
+
+    Not character-scoped — one shared table for every user, like a
+    read-only lookup table rather than user data.
+    """
+
+    __tablename__ = "reference_library"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    entry_type: Mapped[str] = mapped_column(String, nullable=False, index=True)  # "spell" | "equipment" | "feature"
+    foundry_id: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    source: Mapped[str] = mapped_column(String, nullable=False)
+    source_version: Mapped[str] = mapped_column(String, nullable=False)
+
+    rank: Mapped[str | None] = mapped_column(String, nullable=True)
+    action_cost: Mapped[str | None] = mapped_column(String, nullable=True)
+    range: Mapped[str | None] = mapped_column(String, nullable=True)
+    uses: Mapped[str | None] = mapped_column(String, nullable=True)
+    effect: Mapped[str | None] = mapped_column(Text, nullable=True)
+    damage_formula: Mapped[str | None] = mapped_column(String, nullable=True)
+    agile: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    level_gained: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    # Provenance, carried straight through from Foundry's own
+    # system.publication.{license,title} — shown per-entry in search results
+    # and referenced by the site-wide attribution notice (Paizo Community
+    # Use Policy / OGL / ORC expect visible attribution, not just a README
+    # mention).
+    license: Mapped[str | None] = mapped_column(String, nullable=True)
+    publication_title: Mapped[str | None] = mapped_column(String, nullable=True)
 
 
 class Note(Base):
