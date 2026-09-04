@@ -1,0 +1,15 @@
+{% if results %}
+  {% for r in results %}
+    <button type="button" class="reference-result"
+            hx-get="/characters/{{ character_id }}/{{ resource }}/new?reference_id={{ r.id }}"
+            hx-target="closest li" hx-swap="outerHTML">
+      <span class="reference-result-name">{{ r.name }}</span>
+      {% if r.rank %}<span class="tag">{{ r.rank }}</span>{% endif %}
+      {% if r.publication_title or r.license %}
+        <span class="reference-provenance">{{ [r.publication_title, r.license] | select | join(', ') }}</span>
+      {% endif %}
+    </button>
+  {% endfor %}
+{% else %}
+  <div class="reference-no-results">No matches</div>
+{% endif %}

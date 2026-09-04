@@ -1,14 +1,29 @@
 <li id="{{ 'equipment-row-' ~ item.id if item else 'equipment-row-new' }}" class="item-row item-row--card item-row--edit">
+  {% set src = prefill or item %}
+  {% if not item %}
+  <span class="reference-search">
+    <input type="text" name="q" class="reference-search-input" autocomplete="off"
+           placeholder="Search reference library…"
+           hx-get="/characters/{{ character_id }}/equipment/reference-search"
+           hx-trigger="keyup changed delay:300ms" hx-target="next .reference-results" hx-swap="innerHTML">
+    <div class="reference-results" hidden></div>
+  </span>
+  {% endif %}
   <div class="field-grid">
-    <input type="text" name="name" value="{{ item.name if item else '' }}" placeholder="Item name" required>
+    <input type="text" name="name" value="{{ src.name if src else '' }}" placeholder="Item name" required>
+    <!-- description is always hand-typed, never prefilled from the reference library (see equipment.py's _apply_form). -->
     <input type="text" name="description" value="{{ item.description or '' if item else '' }}" placeholder="Bonus / damage text">
     <input type="number" name="qty" value="{{ item.qty if item and item.qty is not none else (1 if not item else '') }}" placeholder="Qty">
     <input type="text" name="container" value="{{ item.container or '' if item else '' }}" placeholder="Container">
+    <!-- attack_bonus is never prefilled from the reference library — it depends on the wielder's own stats, not the item. -->
     <input type="number" name="attack_bonus" value="{{ item.attack_bonus if item and item.attack_bonus is not none else '' }}" placeholder="Attack bonus">
-    <input type="text" name="damage_formula" value="{{ item.damage_formula or '' if item else '' }}" placeholder="Damage (e.g. 1d8+2)">
-    <label class="checkbox-field"><input type="checkbox" name="agile" value="true" {% if item and item.agile %}checked{% endif %}> Agile</label>
+    <input type="text" name="damage_formula" value="{{ src.damage_formula or '' if src else '' }}" placeholder="Damage (e.g. 1d8+2)">
+    <label class="checkbox-field"><input type="checkbox" name="agile" value="true" {% if src and src.agile %}checked{% endif %}> Agile</label>
   </div>
-  <textarea name="notes" placeholder="Notes">{{ item.notes or '' if item else '' }}</textarea>
+  <!-- ReferenceLibrary stores its long-form text as .effect; Equipment's own column is named .notes. -->
+  <textarea name="notes" placeholder="Notes">{{ (prefill.effect or '') if prefill else (item.notes or '' if item else '') }}</textarea>
+  <input type="hidden" name="reference_id" value="{{ prefill.id if prefill else (item.reference_id if item and item.reference_id else '') }}">
+  <input type="hidden" name="reference_version" value="{{ prefill.source_version if prefill else (item.reference_version if item and item.reference_version else '') }}">
   <div class="item-actions">
     {% if item %}
       <button type="button" class="btn btn--primary" hx-put="/characters/{{ character_id }}/equipment/{{ item.id }}"
@@ -22,4 +37,22 @@
               hx-target="closest li" hx-swap="outerHTML">Cancel</button>
     {% endif %}
   </div>
+  {% if not item %}
+  <script>
+    (function () {
+      var li = document.currentScript.closest('li');
+      var input = li.querySelector('.reference-search-input');
+      var box = li.querySelector('.reference-results');
+      if (!input || !box) return;
+
+      input.addEventListener('focus', function () { box.hidden = false; });
+      input.addEventListener('blur', function () { box.hidden = true; });
+      box.addEventListener('mousedown', function (event) {
+        if (event.target.closest('.reference-result')) {
+          event.preventDefault();
+        }
+      });
+    })();
+  </script>
+  {% endif %}
 </li>

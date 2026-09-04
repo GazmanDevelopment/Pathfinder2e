@@ -77,11 +77,11 @@ is one query per section; an edit is a single insert/update/delete.
 | `characters` | name, ancestry, class, level, size, speed, languages, alignment, HP cur/max, AC, class DC, spell DC/atk, perception, hero points, `avatar_path` | Header + Core Statistics |
 | `ability_scores` | str/dex/con/int/wis/cha score + mod (or 6 columns on `characters`) | Ability Scores |
 | `proficiencies` | saves & skills: name, `bonus`, rank (Trained…Legendary) | Saving Throws & Skills |
-| `spells` | name, rank, uses/slots, action cost, range, effect, flags, `attack_bonus`, `damage_formula` | Spells |
-| `equipment` | item, bonus/damage text, notes, qty, container, `attack_bonus`, `damage_formula`, `agile` flag | Equipment |
-| `features` | source (ancestry/order/class/feat), name, effect, level gained | Ancestry/Order/Class Features |
+| `spells` | name, rank, uses/slots, action cost, range, effect (rich text, Phase 7), flags, `attack_bonus`, `damage_formula`, `reference_id`/`reference_version` (Phase 7) | Spells |
+| `equipment` | item, bonus/damage text, notes (rich text, Phase 7), qty, container, `attack_bonus`, `damage_formula`, `agile` flag, `reference_id`/`reference_version` (Phase 7) | Equipment |
+| `features` | source (ancestry/order/class/feat), name, effect (rich text, Phase 7), level gained, `reference_id`/`reference_version` (Phase 7) | Ancestry/Order/Class Features |
 | `notes` | rich text (issue #29): level-up summary, combat reference, GM notes | Changes / Quick Reference |
-| `reference_library` | canonical spells/items/feats imported from open dataset; type, name, structured fields, source, version (Phase 7) | lookup source |
+| `reference_library` | canonical spells/equipment/feats ingested from the Foundry VTT `pf2e` system (Phase 7 — done): `entry_type`, `foundry_id`, name, source/`source_version`, rank, action cost, range, uses, effect (rich text), damage formula, agile, level gained, `license`/`publication_title` | lookup source, prefills Spells/Equipment/Features |
 
 `characters` also carries `parent_character_id` (nullable, self-referential) and
 `is_archived` (Phase 8) — see below.
@@ -210,10 +210,36 @@ Each phase leaves something that runs. **Auth comes after the app works.**
 - **Phase 6 — Tap to roll.** The dice roller: saves/skills/abilities from stored
   modifiers (no new fields); `attack_bonus`/`damage_formula` on weapons & spells;
   nat-20/nat-1 highlight; optional crit + MAP.
-- **Phase 7 — Rules lookup & reference library.** Ingest the open PF2e dataset
-  into `reference_library`; search box on add-spell/add-item prefills a row (roll
-  fields included), fully editable after; override marker; save-homebrew-back.
-  Purely additive — the sheet works without it.
+- **Phase 7 — Rules lookup & reference library — done.** `reference_library`
+  (14,147 rows: 1,994 spells, 5,869 equipment, 6,284 feats) is ingested from
+  the Foundry VTT `pf2e` system's `packs/pf2e/{spells,equipment,feats}` JSON
+  (not bestiaries/ancestries/classes/art — measured directly at ~31 MB, not
+  the full ~2 GB repo) by `scripts/ingest_reference_library.py`, a one-off
+  dev-machine script (sparse git clone, never run in Docker build or at
+  container startup) that writes a vendored, committed snapshot to
+  `app/data/reference_library.json`. The running app only ever reads that
+  file (`app/db.py`'s `seed_reference_library()`, called at startup) — no
+  network or git access at runtime. A search box on the add-spell/add-item/
+  add-feature forms (`app/templates/_reference_results.html`, a hand-rolled
+  live-search dropdown matching the proficiencies rank-field pattern, not a
+  native `<datalist>`) prefills a still-unsaved row via each resource's
+  `/new?reference_id=` route; nothing is ever auto-saved. `reference_id` +
+  `reference_version` on `Spell`/`Equipment`/`Feature` give a "Book updated"
+  marker and an opt-in "Refresh from library" re-fetch
+  (`/{id}/edit?refresh_from_reference=1`) — the character's copy always
+  wins until the user explicitly saves. Reference descriptions keep real
+  HTML formatting (the `note_html` filter from issue #29 was generalized to
+  `rich_text`/`clean_rich_text` in `app/templating.py`, now shared by Notes,
+  Spells, Equipment, and Features alike) rather than being flattened to
+  plain text. Attribution: each search result shows its source book/license
+  (`ReferenceLibrary.publication_title`/`license`, carried straight through
+  from Foundry's own `system.publication` fields), and a site-wide Paizo
+  Community Use Policy / Foundry VTT credit notice
+  (`app/templates/_attribution.html`) renders in `base.html`'s footer
+  whenever the library has data — required by the OGL/ORC/Community Use
+  licensing basis below, not just a README mention. Purely additive — with
+  an empty/un-ingested library the search box just returns no results, and
+  the attribution footer doesn't render at all.
 - **Phase 8 — AI-assisted level-up (optional).** Send the current sheet + a
   free-text note to Claude, get back a proposed leveled-up sheet, review it as a
   diff, archive the pre-level-up character on accept. Fully optional; the app is

@@ -31,5 +31,6 @@
   <main>
     {% block content %}{% endblock %}
   </main>
+  {% if reference_library_active %}{% include "_attribution.html" %}{% endif %}
 </body>
 </html>

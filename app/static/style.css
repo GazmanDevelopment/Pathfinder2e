@@ -943,6 +943,85 @@ textarea {
   white-space: nowrap;
 }
 
+/* Reference library search (Phase 7) — same hand-rolled dropdown approach
+   as .rank-field/.rank-suggestions above (not a native datalist), since the
+   library is far too large for a static option list and needs live,
+   server-backed filtering instead. */
+.reference-search {
+  position: relative;
+  display: block;
+  margin-bottom: 0.6rem;
+}
+.reference-search-input {
+  width: 100%;
+}
+.reference-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 20;
+  margin-top: 0.25rem;
+  max-height: 16rem;
+  overflow-y: auto;
+  background: #fffdf6;
+  border: 1px solid var(--gold-pale);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+.reference-result {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  border: none;
+  border-bottom: 1px solid var(--gold-wash);
+  background: none;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+.reference-result:last-child {
+  border-bottom: none;
+}
+.reference-result:hover,
+.reference-result:focus {
+  background: var(--gold-wash);
+}
+.reference-result-name {
+  flex: 1;
+}
+.reference-provenance {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+.reference-no-results {
+  padding: 0.5rem 0.6rem;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+
+/* "Differs from book" marker — shown when a row's reference_version no
+   longer matches its linked reference_library entry's current one. */
+.reference-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.3rem 0;
+}
+.tag--reference {
+  background: none;
+  border-color: var(--gold);
+  color: var(--gold);
+}
+.btn--small {
+  padding: 0.28rem 0.6rem;
+  font-size: 0.6rem;
+}
+
 /* --------------------------------------------------------------------------
    Error page
    -------------------------------------------------------------------------- */
@@ -1078,6 +1157,28 @@ textarea {
   margin-bottom: 0.75rem;
 }
 
+/* --------------------------------------------------------------------------
+   Attribution (Phase 7) — required by Paizo's Community Use Policy / OGL /
+   ORC whenever reference-library content is in use; only rendered at all
+   when the library has actually been ingested (see base.html).
+   -------------------------------------------------------------------------- */
+
+.attribution {
+  max-width: 60rem;
+  margin: 2rem auto 0;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--gold-pale);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+.attribution p {
+  margin: 0.3rem 0;
+}
+.attribution a {
+  color: inherit;
+}
+
 @media print {
   /* Nothing interactive means anything on paper — every control on the
      sheet is a <button>, so this alone covers Edit/Save/Cancel/Add/
@@ -1089,7 +1190,8 @@ textarea {
 
   .site-nav,
   .item-row--add,
-  .avatar-picker__hint {
+  .avatar-picker__hint,
+  .attribution {
     display: none !important;
   }
 

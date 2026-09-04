@@ -1,6 +1,6 @@
 <li id="{{ 'note-row-' ~ note.id if note else 'note-row-new' }}" class="item-row item-row--card item-row--edit">
   <input type="text" name="title" value="{{ note.title or '' if note else '' }}" placeholder="Title (optional)">
-  <div class="rich-text-editor">{{ note.body | note_html if note else '' }}</div>
+  <div class="rich-text-editor">{{ note.body | rich_text if note else '' }}</div>
   <input type="hidden" name="body">
   <div class="item-actions">
     {% if note %}
