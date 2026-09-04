@@ -943,6 +943,37 @@ textarea {
   white-space: nowrap;
 }
 
+/* Action-cost tooltip (issue #40) — a real <button> so :focus (tapping on
+   mobile) shows it too, not just :hover (desktop only). Pure CSS, no JS:
+   the tooltip text lives in data-tooltip and is rendered via ::after. */
+.tag--tooltip {
+  position: relative;
+  cursor: help;
+  font-family: inherit;
+}
+.tag--tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 130%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: #fff;
+  padding: 0.25rem 0.55rem;
+  border-radius: var(--radius);
+  font-size: 0.7rem;
+  letter-spacing: normal;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+  z-index: 30;
+}
+.tag--tooltip:hover::after,
+.tag--tooltip:focus::after {
+  opacity: 1;
+}
+
 /* Reference library search (Phase 7) — same hand-rolled dropdown approach
    as .rank-field/.rank-suggestions above (not a native datalist), since the
    library is far too large for a static option list and needs live,

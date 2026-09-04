@@ -89,6 +89,26 @@ def clean_rich_text(value: str) -> str | None:
 
 templates.env.filters["rich_text"] = rich_text
 
+# issue #40: spells' action_cost is free text (never validated against a
+# fixed list, per this app's philosophy), so this only recognizes the
+# handful of standard PF2e shorthand values and adds a plain-language
+# tooltip on top of them — it never rewrites what's displayed, and a
+# custom GM value a lookup doesn't recognize just gets no tooltip.
+_ACTION_COST_TOOLTIPS = {
+    "1": "1 action", "2": "2 actions", "3": "3 actions",
+    "r": "Reaction", "reaction": "Reaction",
+    "f": "Free action", "free": "Free action",
+}
+
+
+def action_cost_tooltip(value: str | None) -> str:
+    if not value:
+        return ""
+    return _ACTION_COST_TOOLTIPS.get(value.strip().lower(), "")
+
+
+templates.env.filters["action_cost_tooltip"] = action_cost_tooltip
+
 
 def render_fragment(name: str, **context) -> str:
     return templates.env.get_template(name).render(**context)
