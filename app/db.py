@@ -59,6 +59,11 @@ def run_startup_migrations(engine):
                 conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN reference_id INTEGER")
             if "reference_version" not in cols:
                 conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN reference_version VARCHAR")
+        cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(spells)")}
+        if "uses_current" not in cols:
+            conn.exec_driver_sql("ALTER TABLE spells ADD COLUMN uses_current INTEGER")
+        if "uses_max" not in cols:
+            conn.exec_driver_sql("ALTER TABLE spells ADD COLUMN uses_max INTEGER")
         conn.commit()
 
 

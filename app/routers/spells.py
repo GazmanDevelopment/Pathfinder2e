@@ -38,6 +38,8 @@ def _apply_form(
     name: str,
     rank: str,
     uses: str,
+    uses_current: str,
+    uses_max: str,
     action_cost: str,
     range: str,
     effect: str,
@@ -50,6 +52,8 @@ def _apply_form(
     spell.name = name
     spell.rank = rank or None
     spell.uses = uses or None
+    spell.uses_current = _int_or_none(uses_current)
+    spell.uses_max = _int_or_none(uses_max)
     spell.action_cost = action_cost or None
     spell.range = range or None
     spell.effect = clean_rich_text(effect)
@@ -99,6 +103,8 @@ def create_spell(
     name: str = Form(...),
     rank: str = Form(""),
     uses: str = Form(""),
+    uses_current: str = Form(""),
+    uses_max: str = Form(""),
     action_cost: str = Form(""),
     range: str = Form(""),
     effect: str = Form(""),
@@ -114,6 +120,8 @@ def create_spell(
         name,
         rank,
         uses,
+        uses_current,
+        uses_max,
         action_cost,
         range,
         effect,
@@ -164,6 +172,8 @@ def update_spell(
     name: str = Form(...),
     rank: str = Form(""),
     uses: str = Form(""),
+    uses_current: str = Form(""),
+    uses_max: str = Form(""),
     action_cost: str = Form(""),
     range: str = Form(""),
     effect: str = Form(""),
@@ -179,6 +189,8 @@ def update_spell(
         name,
         rank,
         uses,
+        uses_current,
+        uses_max,
         action_cost,
         range,
         effect,
@@ -188,6 +200,28 @@ def update_spell(
         reference_id,
         reference_version,
     )
+    db.commit()
+    return templates.TemplateResponse(
+        "spells/_row.html", {"request": request, "character_id": character_id, "spell": spell}
+    )
+
+
+@router.post("/{spell_id}/uses/adjust")
+def adjust_spell_uses(
+    request: Request,
+    character_id: int,
+    spell_id: int,
+    db: Session = Depends(get_db),
+    delta: int = Form(...),
+):
+    """Nudge a spell's remaining uses by delta (issue #43) — same unclamped,
+    record-what-happened philosophy as Character.hp_current (see adjust_hp
+    in characters.py): may go below 0 or above uses_max, never blocked or
+    reset automatically. Unset current is treated as 0 so the first tap has
+    somewhere to start from, matching adjust_hp's own convention.
+    """
+    spell = _get_or_404(character_id, spell_id, db)
+    spell.uses_current = (spell.uses_current or 0) + delta
     db.commit()
     return templates.TemplateResponse(
         "spells/_row.html", {"request": request, "character_id": character_id, "spell": spell}

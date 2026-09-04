@@ -15,6 +15,13 @@
     <input type="text" name="action_cost" value="{{ src.action_cost or '' if src else '' }}" placeholder="Action cost">
     <input type="text" name="range" value="{{ src.range or '' if src else '' }}" placeholder="Range">
     <input type="text" name="uses" value="{{ src.uses or '' if src else '' }}" placeholder="Uses / slots">
+    <!-- uses_current/uses_max (issue #43) are never prefilled from the reference library — remaining-today tracking is character state, not a book fact. -->
+    <span class="uses-fields">
+      <input type="number" name="uses_current" class="uses-current-input"
+             value="{{ spell.uses_current if spell and spell.uses_current is not none else '' }}" placeholder="Uses now">
+      <input type="number" name="uses_max" class="uses-max-input"
+             value="{{ spell.uses_max if spell and spell.uses_max is not none else '' }}" placeholder="Uses max">
+    </span>
     <input type="text" name="flags" value="{{ spell.flags or '' if spell else '' }}" placeholder="Flags">
     <!-- attack_bonus is never prefilled from the reference library — it depends on the caster's own stats, not the spell itself. -->
     <input type="number" name="attack_bonus" value="{{ spell.attack_bonus if spell and spell.attack_bonus is not none else '' }}" placeholder="Attack bonus">
@@ -64,4 +71,19 @@
     })();
   </script>
   {% endif %}
+  <script>
+    (function () {
+      // Suggests uses_max as the starting uses_current when the latter is
+      // still empty (issue #43) — same "never overwrites a value already
+      // present" pattern as the ability-score modifier auto-suggest.
+      var li = document.currentScript.closest('li');
+      var maxInput = li.querySelector('.uses-max-input');
+      var currentInput = li.querySelector('.uses-current-input');
+      if (!maxInput || !currentInput) return;
+      maxInput.addEventListener('input', function () {
+        if (currentInput.value !== '') return;
+        currentInput.value = maxInput.value;
+      });
+    })();
+  </script>
 </li>
