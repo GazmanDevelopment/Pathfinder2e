@@ -9,9 +9,15 @@
 {% endblock %}
 
 {% block content %}
+  {% if read_only %}
+    <p class="archived-banner">This is an archived, read-only snapshot from a past level-up. It can't be edited.</p>
+  {% endif %}
   <div class="sheet-toolbar">
     <a class="btn btn--ghost" href="/characters/{{ character.id }}/export/pathbuilder">Export (Pathbuilder)</a>
     <button type="button" class="btn btn--ghost" onclick="window.print()">Print</button>
+    {% if ai_levelup_available %}
+      <a class="btn btn--ghost" href="/characters/{{ character.id }}/level-up">Level up with AI</a>
+    {% endif %}
   </div>
   {# Avatar and header render as one banner card, but stay separate HTMX
      swap targets so each still updates independently. #}
@@ -27,6 +33,9 @@
   {% include "equipment/_list.html" %}
   {% include "features/_list.html" %}
   {% include "notes/_list.html" %}
+  {% if not read_only %}
+    {% include "characters/_history.html" %}
+  {% endif %}
   <script>
     // Printing a collapsed <details> section prints nothing for it — CSS
     // alone can't override that in current Chromium (verified: neither

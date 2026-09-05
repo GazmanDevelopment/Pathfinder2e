@@ -19,7 +19,7 @@ from app.db import (
     run_startup_migrations,
     seed_reference_library,
 )
-from app.deps import get_character_or_404
+from app.deps import get_writable_character
 from app.routers import admin, auth, avatar, characters, equipment, features, level_up, notes, proficiencies, spells
 from app.templating import templates
 
@@ -73,13 +73,19 @@ app.include_router(admin.router, dependencies=[Depends(require_admin)])
 app.include_router(characters.router, dependencies=[Depends(require_login)])
 
 # The other six routers are entirely prefixed under /characters/{character_id}/...,
-# so get_character_or_404 is added as a bare guard here: it's the only thing
-# enforcing ownership on their per-item routes (edit/save/delete an existing
-# row), which use a local helper that checks the item belongs to the character
-# but never re-checks that the character belongs to the caller. FastAPI caches
-# a dependency's result per request, so routes that also inject it directly
-# (the new/POST create endpoints) don't pay for a second fetch.
-_owned = [Depends(require_login), Depends(get_character_or_404)]
+# so get_writable_character is added as a bare guard here: it's the only thing
+# enforcing ownership (and, since Phase 8, the archived-is-read-only rule) on
+# their per-item routes (edit/save/delete an existing row), which use a local
+# helper that checks the item belongs to the character but never re-checks
+# that the character belongs to the caller or isn't archived. FastAPI caches
+# a dependency's result per request, so routes that also inject
+# get_character_or_404 directly (the new/POST create endpoints) don't pay for
+# a second fetch — get_writable_character's own dependency on it resolves
+# from the same cache. This does mean a handful of harmless GETs (e.g. an
+# archived spell's own edit-form GET) 403 too, not just the mutating routes —
+# a deliberate simplification over a method-aware variant, since nothing in
+# the read-only sheet view ever links to them (see app/deps.py).
+_owned = [Depends(require_login), Depends(get_writable_character)]
 app.include_router(proficiencies.router, dependencies=_owned)
 app.include_router(spells.router, dependencies=_owned)
 app.include_router(equipment.router, dependencies=_owned)

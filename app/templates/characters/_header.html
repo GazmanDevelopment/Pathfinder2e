@@ -13,6 +13,8 @@
       {% if character.alignment %}<span>Alignment: {{ character.alignment }}</span>{% endif %}
     </p>
   </div>
-  <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character.id }}/header/edit"
-          hx-target="#character-header" hx-swap="outerHTML">Edit</button>
+  {% if not read_only %}
+    <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character.id }}/header/edit"
+            hx-target="#character-header" hx-swap="outerHTML">Edit</button>
+  {% endif %}
 </section>

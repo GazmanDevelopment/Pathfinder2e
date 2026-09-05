@@ -1,4 +1,6 @@
-<li id="proficiency-row-new" class="item-row item-row--add">
-  <button type="button" class="btn btn--add" hx-get="/characters/{{ character_id }}/proficiencies/new"
-          hx-target="#proficiency-row-new" hx-swap="outerHTML">+ Add proficiency</button>
-</li>
+{% if not read_only %}
+  <li id="proficiency-row-new" class="item-row item-row--add">
+    <button type="button" class="btn btn--add" hx-get="/characters/{{ character_id }}/proficiencies/new"
+            hx-target="#proficiency-row-new" hx-swap="outerHTML">+ Add proficiency</button>
+  </li>
+{% endif %}

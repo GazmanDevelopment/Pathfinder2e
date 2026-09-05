@@ -5,7 +5,7 @@
     {% if feature.level_gained is not none %}<span class="tag">Level {{ feature.level_gained }}</span>{% endif %}
   </div>
   {% if feature.effect %}<p class="item-effect ql-editor">{{ feature.effect | rich_text }}</p>{% endif %}
-  {% if feature.reference_id and feature.reference and feature.reference.source_version != feature.reference_version %}
+  {% if not read_only and feature.reference_id and feature.reference and feature.reference.source_version != feature.reference_version %}
     <div class="reference-badge">
       <span class="tag tag--reference">Book updated</span>
       <button type="button" class="btn btn--ghost btn--small"
@@ -13,22 +13,24 @@
               hx-target="#feature-row-{{ feature.id }}" hx-swap="outerHTML">Refresh from library</button>
     </div>
   {% endif %}
-  <div class="item-actions">
-    {# Reordering (issue #48) moves this row's position, so — like Pin
-       Notes (#46) — it targets the whole #feature-list, not this row. #}
-    <span class="reorder-buttons">
-      <button type="button" class="btn-step btn-step--small" aria-label="Move {{ feature.name }} up"
-              {% if is_first %}disabled{% endif %}
-              hx-post="/characters/{{ character_id }}/features/{{ feature.id }}/move" hx-vals='{"direction": "up"}'
-              hx-target="#feature-list" hx-swap="innerHTML">&uarr;</button>
-      <button type="button" class="btn-step btn-step--small" aria-label="Move {{ feature.name }} down"
-              {% if is_last %}disabled{% endif %}
-              hx-post="/characters/{{ character_id }}/features/{{ feature.id }}/move" hx-vals='{"direction": "down"}'
-              hx-target="#feature-list" hx-swap="innerHTML">&darr;</button>
-    </span>
-    <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/features/{{ feature.id }}/edit"
-            hx-target="#feature-row-{{ feature.id }}" hx-swap="outerHTML">Edit</button>
-    <button type="button" class="btn btn--danger" hx-delete="/characters/{{ character_id }}/features/{{ feature.id }}"
-            hx-target="#feature-row-{{ feature.id }}" hx-swap="outerHTML" hx-confirm="Delete this feature?">Delete</button>
-  </div>
+  {% if not read_only %}
+    <div class="item-actions">
+      {# Reordering (issue #48) moves this row's position, so — like Pin
+         Notes (#46) — it targets the whole #feature-list, not this row. #}
+      <span class="reorder-buttons">
+        <button type="button" class="btn-step btn-step--small" aria-label="Move {{ feature.name }} up"
+                {% if is_first %}disabled{% endif %}
+                hx-post="/characters/{{ character_id }}/features/{{ feature.id }}/move" hx-vals='{"direction": "up"}'
+                hx-target="#feature-list" hx-swap="innerHTML">&uarr;</button>
+        <button type="button" class="btn-step btn-step--small" aria-label="Move {{ feature.name }} down"
+                {% if is_last %}disabled{% endif %}
+                hx-post="/characters/{{ character_id }}/features/{{ feature.id }}/move" hx-vals='{"direction": "down"}'
+                hx-target="#feature-list" hx-swap="innerHTML">&darr;</button>
+      </span>
+      <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/features/{{ feature.id }}/edit"
+              hx-target="#feature-row-{{ feature.id }}" hx-swap="outerHTML">Edit</button>
+      <button type="button" class="btn btn--danger" hx-delete="/characters/{{ character_id }}/features/{{ feature.id }}"
+              hx-target="#feature-row-{{ feature.id }}" hx-swap="outerHTML" hx-confirm="Delete this feature?">Delete</button>
+    </div>
+  {% endif %}
 </li>
