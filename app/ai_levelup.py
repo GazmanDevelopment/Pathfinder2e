@@ -199,7 +199,9 @@ def character_to_dict(character: Character) -> dict:
     }
 
 
-SYSTEM_INSTRUCTIONS = """You are helping a Pathfinder 2e player level up their homebrew-heavy
+_LEVEL_UP_TURN_JSON_SCHEMA = LevelUpTurn.model_json_schema()
+
+SYSTEM_INSTRUCTIONS = f"""You are helping a Pathfinder 2e player level up their homebrew-heavy
 tabletop character. You will see the character's full current sheet as JSON, followed by the
 player's free-text note about what happened (new level, DM-granted items, feat choices, etc.).
 
@@ -220,6 +222,11 @@ Rules:
   a clarifying question if you need more information before proposing anything concrete).
 - Only fill in `proposal` once you have a concrete, complete-enough leveled-up state to show the
   player as a diff. It's fine to ask one or two clarifying questions first via `message` alone.
+
+Respond with ONLY a single JSON object matching this exact schema — no other text, no markdown
+code fences, no explanation outside the JSON:
+
+{json.dumps(_LEVEL_UP_TURN_JSON_SCHEMA, separators=(",", ":"))}
 """
 
 
@@ -239,16 +246,45 @@ def build_system_blocks(character: Character) -> list[dict]:
 
 
 # --- LLM call, dispatched by AI_LEVELUP_PROVIDER ----------------------------
+#
+# Neither provider uses grammar-constrained structured output (Claude's
+# output_format=/output_config.format, or Ollama's response_format.json_schema)
+# — a real request against the live API returned a 400 ("the compiled
+# grammar is too large... reduce the number of strict tools") even after
+# trimming the schema significantly, and reading the SDK's own source
+# (anthropic/lib/_parse/_transform.py) confirmed output_format genuinely
+# compiles to that same grammar-constrained path, not some separate,
+# lighter-weight mechanism — so trimming further wasn't a reliable fix, only
+# a smaller and equally fragile version of the same problem. Both providers
+# now use the identical mechanism instead: the schema is embedded as plain
+# text in the system prompt (SYSTEM_INSTRUCTIONS above), the reply is parsed
+# as ordinary JSON, and a malformed response gets one retry with a sharper
+# instruction before giving up — the same graceful-degradation design
+# already agreed for Ollama's less-reliable local models, just now also
+# covering Claude's real, encountered failure mode.
 
 _anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
 
-_LEVEL_UP_TURN_JSON_SCHEMA = LevelUpTurn.model_json_schema()
-
-OLLAMA_RETRY_INSTRUCTION = (
+JSON_RETRY_INSTRUCTION = (
     "Your last response wasn't valid JSON matching the required schema. Respond with ONLY a "
     "single JSON object matching the schema — no other text, no markdown code fences, no "
     "explanation outside the JSON."
 )
+
+
+def _parse_turn(assistant_text: str) -> LevelUpTurn:
+    """Strips a markdown code fence if the model wrapped its JSON in one
+    despite being told not to (a common habit neither provider is immune
+    to now that neither uses grammar-constrained generation), then
+    validates. Raises pydantic.ValidationError on anything unparseable —
+    callers use that to trigger the one-retry-then-give-up pattern."""
+    text = assistant_text.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1] if "\n" in text else text
+        if text.endswith("```"):
+            text = text.rsplit("```", 1)[0]
+        text = text.strip()
+    return LevelUpTurn.model_validate_json(text)
 
 
 def send_turn(character: Character, session: LevelUpSession, user_message: str) -> LevelUpTurn:
@@ -288,17 +324,16 @@ def send_turn(character: Character, session: LevelUpSession, user_message: str) 
     return turn
 
 
-def _send_turn_anthropic(character: Character, history: list[dict]) -> tuple[LevelUpTurn, str]:
+def _call_anthropic(character: Character, history: list[dict]) -> str:
     if _anthropic_client is None:
         raise AiLevelUpError("AI level-up isn't configured on this server.")
 
     try:
-        response = _anthropic_client.messages.parse(
+        response = _anthropic_client.messages.create(
             model=ANTHROPIC_MODEL,
             max_tokens=8000,
             system=build_system_blocks(character),
             messages=history,
-            output_format=LevelUpTurn,
             output_config={"effort": "high"},
         )
     except anthropic.RateLimitError as exc:
@@ -310,9 +345,24 @@ def _send_turn_anthropic(character: Character, history: list[dict]) -> tuple[Lev
     except anthropic.APIConnectionError as exc:
         raise AiLevelUpError("Couldn't reach Claude — check the network and try again.") from exc
 
-    turn = response.parsed_output
-    assistant_text = next(b.text for b in response.content if b.type == "text")
-    return turn, assistant_text
+    return next(b.text for b in response.content if b.type == "text")
+
+
+def _send_turn_anthropic(character: Character, history: list[dict]) -> tuple[LevelUpTurn, str]:
+    assistant_text = _call_anthropic(character, history)
+    try:
+        return _parse_turn(assistant_text), assistant_text
+    except ValidationError:
+        pass  # one retry below, with a sharper instruction — not persisted into history either way
+
+    retry_history = [*history, {"role": "user", "content": JSON_RETRY_INSTRUCTION}]
+    assistant_text = _call_anthropic(character, retry_history)
+    try:
+        return _parse_turn(assistant_text), assistant_text
+    except ValidationError as exc:
+        raise AiLevelUpError(
+            "Claude couldn't produce a usable response after two tries. Try rephrasing your message."
+        ) from exc
 
 
 def _call_ollama(character: Character, history: list[dict]) -> str:
@@ -369,14 +419,14 @@ def _send_turn_ollama(character: Character, history: list[dict]) -> tuple[LevelU
 
     assistant_text = _call_ollama(character, history)
     try:
-        return LevelUpTurn.model_validate_json(assistant_text), assistant_text
+        return _parse_turn(assistant_text), assistant_text
     except ValidationError:
         pass  # one retry below, with a sharper instruction — not persisted into history either way
 
-    retry_history = [*history, {"role": "user", "content": OLLAMA_RETRY_INSTRUCTION}]
+    retry_history = [*history, {"role": "user", "content": JSON_RETRY_INSTRUCTION}]
     assistant_text = _call_ollama(character, retry_history)
     try:
-        return LevelUpTurn.model_validate_json(assistant_text), assistant_text
+        return _parse_turn(assistant_text), assistant_text
     except ValidationError as exc:
         raise AiLevelUpError(
             "The local AI model couldn't produce a usable response after two tries. Try "
