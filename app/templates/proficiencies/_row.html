@@ -1,7 +1,9 @@
 <li id="proficiency-row-{{ prof.id }}" class="item-row item-row--compact">
   <span class="item-field item-field--name">{{ prof.name }}</span>
   <span class="item-field">{{ prof.rank or "" }}</span>
-  <span class="item-field">{{ prof.bonus if prof.bonus is not none else "" }}</span>
+  <button type="button" class="item-field roll-trigger" data-roll="check"
+          data-roll-mod="{{ prof.bonus if prof.bonus is not none else 0 }}"
+          data-roll-label="{{ prof.name }}">{{ prof.bonus if prof.bonus is not none else "+0" }}</button>
   {% if not read_only %}
     <span class="item-actions">
       <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/proficiencies/{{ prof.id }}/edit"

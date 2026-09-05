@@ -1,0 +1,39 @@
+<div id="dice-tray" class="dice-tray" hidden aria-live="polite">
+  <div class="dice-tray__backdrop" data-dice-close></div>
+  <div class="dice-tray__panel" role="dialog" aria-modal="true" aria-label="Dice roll">
+    <button type="button" class="dice-tray__close" data-dice-close aria-label="Close">&times;</button>
+    <p class="dice-tray__label"></p>
+
+    {# Only unhidden by dice.js when opened from the toolbar's "Roll dice"
+       button — a plain formula box, parsed by the same parseFormula() an
+       automatic damage roll uses. #}
+    <div class="dice-tray__manual" hidden>
+      <input type="text" class="dice-tray__manual-input" placeholder="e.g. 2d6+4"
+             inputmode="text" autocomplete="off">
+      <button type="button" class="btn btn--primary" data-dice-manual-roll>Roll</button>
+    </div>
+
+    <div class="dice-tray__stage"></div>
+
+    <p class="dice-tray__error" hidden></p>
+
+    <div class="dice-tray__result" hidden>
+      <p class="dice-tray__breakdown"></p>
+      <p class="dice-tray__total"></p>
+    </div>
+
+    {# Only unhidden for an "attack"-kind roll — arithmetic on the already-
+       settled d20, never a re-roll, and never persisted past this one roll. #}
+    <div class="dice-tray__map" hidden>
+      <span class="dice-tray__map-label">Follow-up:</span>
+      <button type="button" class="btn btn--ghost" data-map="0" aria-pressed="true">+0</button>
+      <button type="button" class="btn btn--ghost" data-map="1">&minus;5</button>
+      <button type="button" class="btn btn--ghost" data-map="2">&minus;10</button>
+    </div>
+
+    {# Only unhidden for a "damage"-kind roll once it settles — doubles the
+       shown total in place, toggleable, never re-rolls the dice. #}
+    <button type="button" class="btn btn--ghost dice-tray__crit" hidden
+            data-dice-crit aria-pressed="false">Double (Crit)</button>
+  </div>
+</div>

@@ -1329,4 +1329,245 @@ textarea {
   .character-banner {
     break-inside: avoid;
   }
+
+  /* Never print the dice tray, even if it happens to be open (default
+     state is already [hidden], so this only guards that edge case). */
+  .dice-tray {
+    display: none !important;
+  }
+}
+
+/* ==========================================================================
+   Tap-to-roll dice (Phase 6)
+   New precedents for this app: its first CSS animation and its first
+   modal/overlay UI. Reuses the existing palette/shape tokens throughout —
+   no new colors introduced.
+   ========================================================================== */
+
+/* .item-field/.stat-sub never had their own background/border/padding (they
+   were always plain spans), so only those need resetting once applied to a
+   real <button> — anything either class DOES already set (color, font-size,
+   text-align, including .item-row--compact's :nth-child(3) alignment) is an
+   author rule and keeps winning over the button's UA defaults regardless.
+   .tag needs no reset at all: the existing action-cost tooltip button
+   (issue #40) already proved a plain <button class="tag"> renders
+   identically to a styled <span>, no extra reset required. */
+button.item-field,
+button.stat-sub {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.roll-trigger {
+  cursor: pointer;
+}
+.roll-trigger:hover,
+.roll-trigger:focus-visible {
+  color: var(--gold-bright);
+  outline: none;
+}
+.tag.roll-trigger:hover,
+.tag.roll-trigger:focus-visible {
+  background: var(--gold-pale);
+}
+
+.dice-tray {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+/* Guards against [hidden] (an attribute selector, same specificity as a
+   class) losing to a later same-specificity author rule — display is only
+   ever set here, and only when NOT hidden, so the UA default `[hidden] {
+   display: none }` is never overridden while the attribute is present. */
+.dice-tray:not([hidden]) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dice-tray__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(43, 33, 25, 0.45);
+}
+
+.dice-tray__panel {
+  position: relative;
+  z-index: 1;
+  width: min(360px, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-raised);
+  padding: 1.4rem 1.2rem 1.2rem;
+  text-align: center;
+}
+
+.dice-tray__close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.6rem;
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--ink-faint);
+  cursor: pointer;
+  padding: 0.2rem;
+}
+.dice-tray__close:hover,
+.dice-tray__close:focus-visible {
+  color: var(--ink);
+}
+
+.dice-tray__label {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  margin: 0 0 0.8rem;
+}
+
+.dice-tray__manual {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.dice-tray__manual-input {
+  flex: 1 1 auto;
+}
+
+.dice-tray__stage {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 3.2rem;
+  margin-bottom: 0.6rem;
+}
+
+.die {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  background: var(--surface-edit);
+  border: 2px solid var(--gold-pale);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  animation: die-fly 0.55s cubic-bezier(0.32, 1.4, 0.55, 1) both;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+
+/* The "flies across the screen" effect: each die starts off-panel
+   (--from-x/--from-y, randomized per die in JS purely so identical dice —
+   e.g. 2d6 — don't look like stacked clones), tumbles via a full rotation,
+   and settles at its resting position. --i (also set in JS) staggers
+   animation-delay so multi-die damage rolls cascade in rather than popping
+   simultaneously. */
+@keyframes die-fly {
+  0% {
+    transform: translate(var(--from-x, -60px), var(--from-y, -80px)) rotate(-35deg) scale(0.6);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  60% {
+    transform: translate(10px, 4px) rotate(370deg) scale(1.08);
+  }
+  100% {
+    transform: translate(0, 0) rotate(360deg) scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .die {
+    animation: none;
+  }
+}
+
+.die__face {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink);
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+.die--settled .die__face {
+  opacity: 1;
+}
+
+/* Natural 20 / natural 1 — only ever applied to a check/attack roll's
+   single d20, never to a damage die regardless of its value (dice.js
+   tracks which die is the d20 explicitly, never infers it from side count). */
+.die--crit-hit {
+  border-color: var(--gold-bright);
+  box-shadow: 0 0 0 3px var(--gold-bright);
+}
+.die--crit-miss {
+  border-color: var(--crimson-soft);
+  box-shadow: 0 0 0 3px var(--crimson-soft);
+}
+
+.dice-tray__error {
+  color: var(--crimson);
+  font-size: 0.9rem;
+  margin: 0.4rem 0;
+}
+
+.dice-tray__result {
+  margin: 0.6rem 0 0.4rem;
+}
+.dice-tray__breakdown {
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+  margin: 0 0 0.2rem;
+}
+.dice-tray__total {
+  font-family: var(--font-display);
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--gold);
+  margin: 0;
+}
+
+/* MAP and Crit are transient, per-roll UI only — never persisted, matching
+   this app's "convenience roller, not a rules engine" stance (no
+   initiative/turn tracking to hang a persistent toggle off of). */
+.dice-tray__map {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 0.9rem;
+  font-size: 0.8rem;
+}
+.dice-tray__map-label {
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+}
+.dice-tray__map [aria-pressed="true"] {
+  background: var(--gold-wash);
+  border-color: var(--gold);
+}
+
+.dice-tray__crit {
+  margin-top: 0.7rem;
+}
+.dice-tray__crit[aria-pressed="true"] {
+  background: var(--gold-wash);
+  border-color: var(--gold);
 }

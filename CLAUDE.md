@@ -92,16 +92,42 @@ in the DB — no blobs in SQLite. On upload: validate MIME + cap size, resize to
 max and generate a thumbnail (Pillow), strip EXIF, save under a random filename.
 Serve through the app, scoped to logged-in users, with a placeholder when unset.
 
-### Tap to roll — anything with a modifier
-Pure client-side JS. Two tiers:
-- **Saves, skills, ability checks — no new fields.** Just `d20 + modifier`, and
-  the modifier is already stored (`proficiencies.bonus`, the ability mods). Tap
-  → roll, show the die + total, highlight natural 20 / natural 1.
-- **Weapons & spells — needs the parseable fields.** `attack_bonus` (`+4`) and
-  `damage_formula` (`2d4+2` dice notation) on the row. Tap → attack roll, then
-  damage with a visible breakdown. A row with no formula shows no roll button.
-- Optional: **crit** action that doubles the damage total (PF2e). **MAP** toggle
-  −5/−10 (−4/−8 with `agile`) for follow-up attacks.
+### Tap to roll — anything with a modifier (Phase 6 — done)
+Pure client-side JS (`app/static/dice.js`), no server changes at all — no new
+routes, no new DB columns. A single `document`-level delegated click listener
+(not per-row bindings) reads `data-roll`/`data-roll-mod`/`data-roll-formula`/
+`data-roll-label`/`data-roll-agile` off whichever trigger was tapped; this
+survives htmx's `outerHTML` row swaps with no rebinding, unlike this app's
+usual per-partial inline-script convention, which a listener bound directly
+to a row element would not.
+- **Saves, skills, ability checks — no new fields.** Just `d20 + modifier`,
+  and the modifier is already stored (`Proficiency.bonus`, the ability
+  `*_mod` columns). Tap → roll, show the die + total, highlight natural 20 /
+  natural 1 (gold/crimson glow on that one d20 only — never a damage die,
+  regardless of its value). A proficiency with no bonus entered yet still
+  rolls, as `+0` (never written back to the DB, purely a transient default
+  for the roll action) — an unset ability score has no such default and
+  shows no roll button at all, since "not entered yet" isn't the same as
+  "trained at +0."
+- **Weapons & spells — needs the parseable fields.** `attack_bonus` and
+  `damage_formula` (`2d4+2` dice notation, parsed by `dice.js`'s
+  `parseFormula()`) on the row, independently tappable — Atk and Dmg are two
+  separate triggers, never auto-chained, since confirming a hit is the DM's
+  call, not this tool's. A row with no formula/bonus shows no roll button.
+- **Crit** doubles a settled damage total in place (arithmetic only, never
+  re-rolls the dice); toggleable, reversible without closing the tray.
+  **MAP** buttons (`+0`/`−5`/`−10`, or `−4`/`−8` with `agile`) appear only on
+  an attack roll and recompute its total in place the same way — neither
+  persists past that one open roll.
+- **Manual entry**: a "Roll dice" button in the sheet toolbar opens the same
+  overlay with a plain formula box (e.g. typing `2d6+4`); unparseable input
+  shows a friendly inline error rather than crashing.
+- The roll shows as a small modal-like tray (`app/templates/characters/
+  _dice_tray.html`) with each die visually flying in (CSS `@keyframes
+  die-fly`: translate + rotate + scale, staggered per die so a multi-die
+  damage roll cascades in) before settling on its face — this app's first
+  CSS animation and first overlay/modal UI, so it reuses the existing
+  parchment/gold palette and shape tokens rather than introducing new ones.
 
 It's a **convenience roller, not a rules engine**: it rolls dice and does
 arithmetic; it doesn't know enemy AC, doesn't auto-decide crits, doesn't track
@@ -207,9 +233,13 @@ Each phase leaves something that runs. **Auth comes after the app works.**
   download from the sheet page, explicitly one-way/lossy since this app
   tracks less structured detail than Pathbuilder does. Phase 5 is now
   fully done.
-- **Phase 6 — Tap to roll.** The dice roller: saves/skills/abilities from stored
-  modifiers (no new fields); `attack_bonus`/`damage_formula` on weapons & spells;
-  nat-20/nat-1 highlight; optional crit + MAP.
+- **Phase 6 — Tap to roll — done.** The dice roller: saves/skills/abilities from
+  stored modifiers (no new fields); `attack_bonus`/`damage_formula` on weapons &
+  spells (independent Atk/Dmg triggers); nat-20/nat-1 highlight; Crit + MAP as
+  transient per-roll toggles; a manual "2d6+4"-style entry box; each roll shown
+  as an animated die flying in and settling, this app's first CSS animation and
+  overlay UI. Pure client-side (`app/static/dice.js`) — no server changes. See
+  below for the full detail.
 - **Phase 7 — Rules lookup & reference library — done.** `reference_library`
   (14,147 rows: 1,994 spells, 5,869 equipment, 6,284 feats) is ingested from
   the Foundry VTT `pf2e` system's `packs/pf2e/{spells,equipment,feats}` JSON

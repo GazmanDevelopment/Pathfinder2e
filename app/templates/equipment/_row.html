@@ -4,8 +4,17 @@
     {% if item.qty is not none %}<span class="tag">x{{ item.qty }}</span>{% endif %}
     {% if item.container %}<span class="tag">{{ item.container }}</span>{% endif %}
     {% if item.description %}<span class="tag">{{ item.description }}</span>{% endif %}
-    {% if item.attack_bonus is not none %}<span class="tag">Atk {{ "%+d"|format(item.attack_bonus) }}</span>{% endif %}
-    {% if item.damage_formula %}<span class="tag">Dmg {{ item.damage_formula }}</span>{% endif %}
+    {% if item.attack_bonus is not none %}
+      <button type="button" class="tag roll-trigger" data-roll="attack"
+              data-roll-mod="{{ item.attack_bonus }}" data-roll-label="{{ item.name }}"
+              {% if item.agile %}data-roll-agile{% endif %}
+              >Atk {{ "%+d"|format(item.attack_bonus) }}</button>
+    {% endif %}
+    {% if item.damage_formula %}
+      <button type="button" class="tag roll-trigger" data-roll="damage"
+              data-roll-formula="{{ item.damage_formula }}" data-roll-label="{{ item.name }}"
+              >Dmg {{ item.damage_formula }}</button>
+    {% endif %}
     {% if item.agile %}<span class="tag">Agile</span>{% endif %}
   </div>
   {% if item.notes %}<p class="item-effect ql-editor">{{ item.notes | rich_text }}</p>{% endif %}

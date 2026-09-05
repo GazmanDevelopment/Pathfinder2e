@@ -10,7 +10,12 @@
     <div class="stat">
       <span class="stat-label">{{ label }}</span>
       <span class="stat-value">{{ score if score is not none else "—" }}</span>
-      <span class="stat-sub">{{ "%+d"|format(mod) if mod is not none else "—" }}</span>
+      {% if mod is not none %}
+        <button type="button" class="stat-sub roll-trigger" data-roll="check"
+                data-roll-mod="{{ mod }}" data-roll-label="{{ label }}">{{ "%+d"|format(mod) }}</button>
+      {% else %}
+        <span class="stat-sub">—</span>
+      {% endif %}
     </div>
   {% endfor %}
 </div>
