@@ -222,14 +222,23 @@ def adjust_spell_uses(
     db: Session = Depends(get_db),
     delta: int = Form(...),
 ):
-    """Nudge a spell's remaining uses by delta (issue #43) — same unclamped,
-    record-what-happened philosophy as Character.hp_current (see adjust_hp
-    in characters.py): may go below 0 or above uses_max, never blocked or
-    reset automatically. Unset current is treated as 0 so the first tap has
-    somewhere to start from, matching adjust_hp's own convention.
+    """Nudge a spell's remaining uses by delta (issue #43), clamped to
+    [0, uses_max] (issue #45) — unlike Character.hp_current (see adjust_hp
+    in characters.py), which is deliberately left unclamped since HP can
+    genuinely go negative (dying) or over max (temporary/overheal) in
+    play. A spell's remaining uses can't meaningfully be negative or
+    exceed its own max, so this counter gets a different policy on
+    purpose, not by oversight. Unset current is treated as 0 so the first
+    tap has somewhere to start from, matching adjust_hp's own convention.
+    Only this tap-to-adjust action is clamped — the edit form's plain
+    number inputs stay freely typable, same free-form principle as
+    everywhere else on this sheet.
     """
     spell = _get_or_404(character_id, spell_id, db)
-    spell.uses_current = (spell.uses_current or 0) + delta
+    new_value = max((spell.uses_current or 0) + delta, 0)
+    if spell.uses_max is not None:
+        new_value = min(new_value, spell.uses_max)
+    spell.uses_current = new_value
     db.commit()
     return templates.TemplateResponse(
         "spells/_row.html", {"request": request, "character_id": character_id, "spell": spell}
