@@ -64,6 +64,10 @@ def run_startup_migrations(engine):
             conn.exec_driver_sql("ALTER TABLE spells ADD COLUMN uses_current INTEGER")
         if "uses_max" not in cols:
             conn.exec_driver_sql("ALTER TABLE spells ADD COLUMN uses_max INTEGER")
+        cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(characters)")}
+        for coin in ("pp", "gp", "sp", "cp"):
+            if coin not in cols:
+                conn.exec_driver_sql(f"ALTER TABLE characters ADD COLUMN {coin} INTEGER")
         conn.commit()
 
 

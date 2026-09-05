@@ -1,0 +1,8 @@
+<div class="stat-grid">
+  <div class="stat"><span class="stat-label">PP</span><span class="stat-value">{{ character.pp if character.pp is not none else "—" }}</span></div>
+  <div class="stat"><span class="stat-label">GP</span><span class="stat-value">{{ character.gp if character.gp is not none else "—" }}</span></div>
+  <div class="stat"><span class="stat-label">SP</span><span class="stat-value">{{ character.sp if character.sp is not none else "—" }}</span></div>
+  <div class="stat"><span class="stat-label">CP</span><span class="stat-value">{{ character.cp if character.cp is not none else "—" }}</span></div>
+</div>
+<button type="button" class="btn btn--ghost" hx-get="/characters/{{ character.id }}/money/edit"
+        hx-target="#money-body" hx-swap="innerHTML">Edit</button>
