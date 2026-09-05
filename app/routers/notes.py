@@ -88,3 +88,28 @@ def delete_note(character_id: int, note_id: int, db: Session = Depends(get_db)):
     db.delete(note)
     db.commit()
     return HTMLResponse("")
+
+
+@router.post("/{note_id}/pin")
+def toggle_pin_note(
+    request: Request,
+    character_id: int,
+    note_id: int,
+    character: Character = Depends(get_character_or_404),
+    db: Session = Depends(get_db),
+):
+    """Toggles a note's pinned state (issue #46) and re-renders the whole
+    list in its new order. Pinning moves a note's position, so — unlike
+    edit/delete, which only ever change or remove a row in place — a
+    single-row swap can't relocate it; only re-rendering all of #note-list
+    actually moves it. character.notes' relationship order_by (see
+    models.py) does the actual pinned-first sorting; this just re-reads it
+    after the commit, since it wasn't accessed earlier in this request.
+    """
+    note = _get_or_404(character_id, note_id, db)
+    note.is_pinned = not note.is_pinned
+    db.commit()
+    return templates.TemplateResponse(
+        "notes/_list_items.html",
+        {"request": request, "character_id": character_id, "character": character},
+    )

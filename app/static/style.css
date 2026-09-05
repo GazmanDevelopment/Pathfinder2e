@@ -829,6 +829,16 @@ textarea {
   padding: 0.8rem 0.7rem;
 }
 
+/* Pinned notes (issue #46) — a subtle accent, not a loud badge; the sort
+   order itself (pinned-first) is what actually matters. */
+.item-row--pinned {
+  border-left: 3px solid var(--gold);
+  padding-left: calc(0.7rem - 3px);
+}
+.pin-indicator {
+  font-size: 0.85rem;
+}
+
 /* Edit mode — lift the row out of the list visually */
 .item-row--edit {
   background: var(--surface-edit);

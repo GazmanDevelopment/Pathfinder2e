@@ -100,7 +100,12 @@ class Character(Base):
         back_populates="character", cascade="all, delete-orphan", order_by="Feature.id"
     )
     notes: Mapped[list["Note"]] = relationship(
-        back_populates="character", cascade="all, delete-orphan", order_by="Note.id"
+        back_populates="character",
+        cascade="all, delete-orphan",
+        # Pinned notes first (issue #46), each group otherwise in its
+        # normal (creation) order — verified directly that a compound
+        # string order_by like this actually works, not assumed.
+        order_by="Note.is_pinned.desc(), Note.id",
     )
 
 
@@ -249,6 +254,10 @@ class Note(Base):
     )
     title: Mapped[str | None] = mapped_column(String, nullable=True)
     body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # issue #46 — pinned notes sort to the top (see Character.notes'
+    # order_by below); existing databases need run_startup_migrations() to
+    # add this column.
+    is_pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 

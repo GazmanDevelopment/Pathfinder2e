@@ -64,6 +64,12 @@ def run_startup_migrations(engine):
             conn.exec_driver_sql("ALTER TABLE spells ADD COLUMN uses_current INTEGER")
         if "uses_max" not in cols:
             conn.exec_driver_sql("ALTER TABLE spells ADD COLUMN uses_max INTEGER")
+        cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(notes)")}
+        if "is_pinned" not in cols:
+            # NOT NULL needs an explicit constant DEFAULT here — SQLite
+            # rejects ADD COLUMN NOT NULL with no default on a non-empty
+            # table.
+            conn.exec_driver_sql("ALTER TABLE notes ADD COLUMN is_pinned BOOLEAN NOT NULL DEFAULT 0")
         cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(characters)")}
         for coin in ("pp", "gp", "sp", "cp"):
             if coin not in cols:
