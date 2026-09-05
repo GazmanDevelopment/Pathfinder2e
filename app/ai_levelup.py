@@ -54,7 +54,17 @@ class ProposedCharacterUpdates(BaseModel):
     """Scalar Character field updates only. Every field optional — absent/
     None means "no change proposed" for that field. Deliberately excludes
     hp_current (current damage state, not something a level-up should
-    touch) and hero_points (a per-session resource, unrelated to leveling)."""
+    touch) and hero_points (a per-session resource, unrelated to leveling).
+
+    No _mod fields — a real 400 from Claude ("the compiled grammar is too
+    large... reduce the number of strict tools") forced trimming this
+    schema; the 6 ability modifiers were the clearest cut, since they're
+    always mechanically derived from score under standard PF2e rules (the
+    same (score - 10) // 2 formula app/pathbuilder.py's _mod() already
+    uses) — archive_and_apply() computes them itself when a score is
+    accepted, rather than trusting the model to keep score/mod consistent
+    across a much larger schema.
+    """
 
     level: int | None = None
     hp_max: int | None = None
@@ -64,46 +74,43 @@ class ProposedCharacterUpdates(BaseModel):
     spell_atk: int | None = None
     perception: int | None = None
     str_score: int | None = None
-    str_mod: int | None = None
     dex_score: int | None = None
-    dex_mod: int | None = None
     con_score: int | None = None
-    con_mod: int | None = None
     int_score: int | None = None
-    int_mod: int | None = None
     wis_score: int | None = None
-    wis_mod: int | None = None
     cha_score: int | None = None
-    cha_mod: int | None = None
 
 
 class ProposedSpell(BaseModel):
     """A brand-new Spell row to add — never a modification of an existing
     one. No attack_bonus (depends on the caster's own stats, not the
     spell), no reference_id/reference_version (not sourced from
-    reference_library)."""
+    reference_library). No uses_current (a just-added spell has no
+    meaningful "already used some today" state) or flags (low-value for an
+    AI-authored row; add it by hand afterward if wanted) — both trimmed
+    for the same grammar-size reason as ProposedCharacterUpdates above.
+    """
 
     name: str
     rank: str | None = None
     uses: str | None = None
-    uses_current: int | None = None
     uses_max: int | None = None
     action_cost: str | None = None
     range: str | None = None
     effect: str | None = None
-    flags: str | None = None
     damage_formula: str | None = None
 
 
 class ProposedEquipment(BaseModel):
     """A brand-new Equipment row to add. No attack_bonus, no
-    reference_id/reference_version — same reasoning as ProposedSpell."""
+    reference_id/reference_version — same reasoning as ProposedSpell. No
+    container (low-value for a newly-added item; same grammar-size
+    trimming as above)."""
 
     name: str
     description: str | None = None
     notes: str | None = None
     qty: int | None = None
-    container: str | None = None
     damage_formula: str | None = None
     agile: bool = False
 
@@ -204,8 +211,9 @@ Rules:
   wielder's own proficiency/ability modifiers, which you don't have precise enough context to
   compute reliably. Leave it out entirely.
 - Only set a Character field (level, hp_max, ac, class_dc, spell_dc, spell_atk, perception,
-  ability scores/mods) when you are proposing an actual change to it — leave everything else
-  null/absent.
+  ability scores) when you are proposing an actual change to it — leave everything else
+  null/absent. Ability modifiers aren't part of this schema; they're derived automatically
+  from any proposed score using the standard (score - 10) // 2 formula.
 - This is a homebrew table: the DM's stated grants always take precedence over published rules.
   If the player's note conflicts with what you'd expect from the rulebook, follow the note.
 - Always fill in `message` with a short, plain-language explanation of what you're proposing (or
@@ -435,7 +443,15 @@ def archive_and_apply(
     updates = proposal.character_updates
     for field in accept_fields:
         if hasattr(updates, field):
-            setattr(character, field, getattr(updates, field))
+            new_value = getattr(updates, field)
+            setattr(character, field, new_value)
+            # ProposedCharacterUpdates has no _mod fields (trimmed for
+            # Claude's structured-output grammar-size limit) — derive the
+            # modifier ourselves using the same formula app/pathbuilder.py's
+            # _mod() already relies on, rather than trust the model to keep
+            # score/mod consistent across a larger schema.
+            if field.endswith("_score") and new_value is not None:
+                setattr(character, field[: -len("score")] + "mod", (new_value - 10) // 2)
 
     # A running local counter, not a repeated _next_sort_order() query — this
     # app's SessionLocal disables autoflush, so a query-per-row here would
@@ -449,8 +465,8 @@ def archive_and_apply(
             p = proposal.new_spells[idx]
             db.add(Spell(
                 character_id=character.id, name=p.name, rank=p.rank, uses=p.uses,
-                uses_current=p.uses_current, uses_max=p.uses_max, action_cost=p.action_cost,
-                range=p.range, effect=p.effect, flags=p.flags, damage_formula=p.damage_formula,
+                uses_max=p.uses_max, action_cost=p.action_cost,
+                range=p.range, effect=p.effect, damage_formula=p.damage_formula,
                 sort_order=next_spell_order,
             ))
             next_spell_order += 1
@@ -461,7 +477,7 @@ def archive_and_apply(
             p = proposal.new_equipment[idx]
             db.add(Equipment(
                 character_id=character.id, name=p.name, description=p.description, notes=p.notes,
-                qty=p.qty, container=p.container, damage_formula=p.damage_formula, agile=p.agile,
+                qty=p.qty, damage_formula=p.damage_formula, agile=p.agile,
                 sort_order=next_equipment_order,
             ))
             next_equipment_order += 1

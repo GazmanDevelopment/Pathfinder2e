@@ -1,12 +1,14 @@
 <form method="post" action="/characters/{{ character_id }}/level-up/apply" class="level-up-diff">
   <h2>{{ proposal.summary }}</h2>
 
+  {# No _mod fields — trimmed from the schema for Claude's structured-output
+     grammar-size limit; archive_and_apply() derives each accepted score's
+     modifier automatically, so there's nothing separate to show/accept here. #}
   {% set field_labels = {
     "level": "Level", "hp_max": "HP Max", "ac": "AC", "class_dc": "Class DC",
     "spell_dc": "Spell DC", "spell_atk": "Spell Atk", "perception": "Perception",
-    "str_score": "STR Score", "str_mod": "STR Mod", "dex_score": "DEX Score", "dex_mod": "DEX Mod",
-    "con_score": "CON Score", "con_mod": "CON Mod", "int_score": "INT Score", "int_mod": "INT Mod",
-    "wis_score": "WIS Score", "wis_mod": "WIS Mod", "cha_score": "CHA Score", "cha_mod": "CHA Mod",
+    "str_score": "STR Score", "dex_score": "DEX Score", "con_score": "CON Score",
+    "int_score": "INT Score", "wis_score": "WIS Score", "cha_score": "CHA Score",
   } %}
   {% set updates = proposal.character_updates %}
   <div class="field-grid">
