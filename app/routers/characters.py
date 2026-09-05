@@ -285,3 +285,41 @@ def save_ability_scores(
     return templates.TemplateResponse(
         "characters/_ability_scores_body.html", {"request": request, "character": character}
     )
+
+
+@router.get("/{character_id}/money")
+def show_money(request: Request, character: Character = Depends(get_character_or_404)):
+    # Split shell/body from the start (issue #47), same pattern issue #39
+    # retrofitted onto core-stats/ability-scores: swapping only #money-body
+    # (innerHTML) rather than the outer <details> means this section's
+    # open/closed state is never disturbed by Edit/Save/Cancel.
+    return templates.TemplateResponse(
+        "characters/_money_body.html", {"request": request, "character": character}
+    )
+
+
+@router.get("/{character_id}/money/edit")
+def edit_money(request: Request, character: Character = Depends(get_character_or_404)):
+    return templates.TemplateResponse(
+        "characters/_money_edit.html", {"request": request, "character": character}
+    )
+
+
+@router.put("/{character_id}/money")
+def save_money(
+    request: Request,
+    character: Character = Depends(get_character_or_404),
+    db: Session = Depends(get_db),
+    pp: str = Form(""),
+    gp: str = Form(""),
+    sp: str = Form(""),
+    cp: str = Form(""),
+):
+    character.pp = _int_or_none(pp)
+    character.gp = _int_or_none(gp)
+    character.sp = _int_or_none(sp)
+    character.cp = _int_or_none(cp)
+    db.commit()
+    return templates.TemplateResponse(
+        "characters/_money_body.html", {"request": request, "character": character}
+    )

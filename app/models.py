@@ -59,6 +59,14 @@ class Character(Base):
     perception: Mapped[int | None] = mapped_column(Integer, nullable=True)
     hero_points: Mapped[int | None] = mapped_column(Integer, nullable=True, default=1)
 
+    # Money (issue #47) — a record of what's on hand, not a ledger; no
+    # transaction history, just the current count of each coin type.
+    # Existing databases need run_startup_migrations() to add these.
+    pp: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    gp: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sp: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    cp: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     str_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     str_mod: Mapped[int | None] = mapped_column(Integer, nullable=True)
     dex_score: Mapped[int | None] = mapped_column(Integer, nullable=True)

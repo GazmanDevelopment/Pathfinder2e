@@ -70,6 +70,10 @@ def run_startup_migrations(engine):
             # rejects ADD COLUMN NOT NULL with no default on a non-empty
             # table.
             conn.exec_driver_sql("ALTER TABLE notes ADD COLUMN is_pinned BOOLEAN NOT NULL DEFAULT 0")
+        cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(characters)")}
+        for coin in ("pp", "gp", "sp", "cp"):
+            if coin not in cols:
+                conn.exec_driver_sql(f"ALTER TABLE characters ADD COLUMN {coin} INTEGER")
         conn.commit()
 
 
