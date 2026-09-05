@@ -88,7 +88,15 @@ class Character(Base):
 
     owner: Mapped["User"] = relationship()
     proficiencies: Mapped[list["Proficiency"]] = relationship(
-        back_populates="character", cascade="all, delete-orphan", order_by="Proficiency.id"
+        back_populates="character",
+        cascade="all, delete-orphan",
+        # Alphabetical by name (issue #49), case-insensitively — verified
+        # directly that .collate("NOCASE") works in this string order_by
+        # form, not assumed. A plain case-sensitive sort would otherwise
+        # sort every capitalized seeded name before any lowercase custom
+        # one a player types, which isn't what "alphabetical" means to a
+        # reader.
+        order_by='Proficiency.name.collate("NOCASE")',
     )
     spells: Mapped[list["Spell"]] = relationship(
         back_populates="character", cascade="all, delete-orphan", order_by="Spell.id"
