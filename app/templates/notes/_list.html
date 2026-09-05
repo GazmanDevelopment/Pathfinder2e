@@ -2,9 +2,6 @@
 <details class="sheet-section">
   <summary><h2>Notes</h2></summary>
   <ul id="note-list" class="item-list">
-    {% for note in character.notes %}
-      {% include "notes/_row.html" %}
-    {% endfor %}
-    {% include "notes/_add_trigger.html" %}
+    {% include "notes/_list_items.html" %}
   </ul>
 </details>
