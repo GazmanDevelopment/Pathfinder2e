@@ -18,8 +18,14 @@
     {% include "level_up/_proposal_diff.html" %}
   {% endif %}
 
+  {# hx-disabled-elt: disables the Send button for the duration of the
+     request (re-enabled automatically on either success or error) — an AI
+     reply can take a while, and a second click mid-request is exactly what
+     surfaced the SQLite write-lock bug this app just fixed. Belt-and-
+     suspenders with that server-side fix, not a replacement for it. #}
   <form hx-post="/characters/{{ character_id }}/level-up/{{ 'message' if session else 'start' }}"
-        hx-target="#level-up-panel" hx-swap="outerHTML" class="level-up-reply-form">
+        hx-target="#level-up-panel" hx-swap="outerHTML" hx-disabled-elt="find button"
+        class="level-up-reply-form">
     <textarea name="{{ 'message' if session else 'note' }}"
               placeholder="{{ 'Reply to refine the proposal…' if session else 'Describe what happened — new level, items, feats…' }}"
               required></textarea>

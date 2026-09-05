@@ -444,7 +444,7 @@ a:hover {
   margin: 0;
 }
 
-.admin-user-row .btn:disabled {
+.btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
