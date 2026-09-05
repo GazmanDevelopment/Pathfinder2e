@@ -29,6 +29,14 @@
       <input type="text" name="build_id" placeholder="Pathbuilder build ID" required>
       <button type="submit" class="btn btn--ghost">Import from Pathbuilder</button>
     </form>
+
+    {% if is_admin_view %}
+      <form method="get" action="/characters" class="create-character-form">
+        <input type="text" name="q" value="{{ q }}" placeholder="Search by character or player name…">
+        <button type="submit" class="btn btn--ghost">Search</button>
+        {% if q %}<a class="btn btn--ghost" href="/characters">Clear</a>{% endif %}
+      </form>
+    {% endif %}
   {% endif %}
 
   <ul id="character-list" class="item-list">
