@@ -33,11 +33,39 @@ SESSION_HTTPS_ONLY = os.environ.get("SESSION_HTTPS_ONLY", "true").lower() != "fa
 # writing into a real Authelia file backend.
 AUTHELIA_USERS_DB_PATH = os.environ.get("AUTHELIA_USERS_DB_PATH", "")
 
-# Anthropic API key (Phase 8, optional). Same silently-hidden-optional
-# pattern as AUTHELIA_USERS_DB_PATH above, not SESSION_SECRET's hard
-# startup failure — unset simply hides the "Level up with AI" entry point
-# and the admin grant/revoke toggle, no code path depends on it existing.
+# AI level-up (Phase 8, optional). Two interchangeable backends — which one
+# is actually used is a single deployment-wide choice, not a per-request
+# toggle: an admin/deployer picks the provider that suits their setup.
+#
+# "anthropic" (the default): Claude API, via ANTHROPIC_API_KEY.
+# "ollama": a self-hosted Ollama or Open WebUI server's OpenAI-compatible
+# chat-completions endpoint, via OLLAMA_BASE_URL/OLLAMA_MODEL. Structured
+# JSON output is meaningfully less reliable on local open-weight models
+# than Claude's schema-guaranteed structured outputs — app/ai_levelup.py's
+# Ollama path retries once with a sharper instruction before giving up.
+AI_LEVELUP_PROVIDER = os.environ.get("AI_LEVELUP_PROVIDER", "anthropic").strip().lower()
+
+# Same silently-hidden-optional pattern as AUTHELIA_USERS_DB_PATH above, not
+# SESSION_SECRET's hard startup failure — unset simply hides the "Level up
+# with AI" entry point and the admin grant/revoke toggle, no code path
+# depends on either existing. See ai_levelup_configured() below, which
+# checks only whichever provider is actually active.
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+# e.g. "http://192.168.1.50:11434/v1" for a raw Ollama server, or whatever
+# OpenAI-compatible base URL an Open WebUI instance exposes — this app
+# appends "/chat/completions" itself, so include no trailing path here.
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "").rstrip("/")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "")
+
+
+def ai_levelup_configured() -> bool:
+    """Whether the currently-active provider has everything it needs —
+    gates the "Level up with AI" entry point and the admin toggle. Checks
+    only the active provider's own requirements, even if the other
+    provider's env vars also happen to be set."""
+    if AI_LEVELUP_PROVIDER == "ollama":
+        return bool(OLLAMA_BASE_URL and OLLAMA_MODEL)
+    return bool(ANTHROPIC_API_KEY)
 
 # OIDC providers, keyed by the name used in /auth/{provider}/... URLs. Entra
 # joins this dict in Phase 3; the login page and routes are already generic

@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import authelia_sync
-from app.config import ANTHROPIC_API_KEY, AUTHELIA_USERS_DB_PATH
+from app.config import AUTHELIA_USERS_DB_PATH, ai_levelup_configured
 from app.db import get_db
 from app.models import Character, User
 from app.templating import templates
@@ -64,7 +64,7 @@ def list_users(
             "char_counts": char_counts,
             "admin_count": _admin_count(db),
             "authelia_configured": bool(AUTHELIA_USERS_DB_PATH),
-            "ai_levelup_configured": bool(ANTHROPIC_API_KEY),
+            "ai_levelup_configured": ai_levelup_configured(),
         },
     )
 

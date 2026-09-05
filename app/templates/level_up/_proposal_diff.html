@@ -1,0 +1,77 @@
+<form method="post" action="/characters/{{ character_id }}/level-up/apply" class="level-up-diff">
+  <h2>{{ proposal.summary }}</h2>
+
+  {% set field_labels = {
+    "level": "Level", "hp_max": "HP Max", "ac": "AC", "class_dc": "Class DC",
+    "spell_dc": "Spell DC", "spell_atk": "Spell Atk", "perception": "Perception",
+    "str_score": "STR Score", "str_mod": "STR Mod", "dex_score": "DEX Score", "dex_mod": "DEX Mod",
+    "con_score": "CON Score", "con_mod": "CON Mod", "int_score": "INT Score", "int_mod": "INT Mod",
+    "wis_score": "WIS Score", "wis_mod": "WIS Mod", "cha_score": "CHA Score", "cha_mod": "CHA Mod",
+  } %}
+  {% set updates = proposal.character_updates %}
+  <div class="field-grid">
+    {% for field, label in field_labels.items() %}
+      {% set proposed = updates[field] %}
+      {% if proposed is not none %}
+        <label class="level-up-field-diff">
+          <input type="checkbox" name="accept_field" value="{{ field }}" checked>
+          {{ label }}: {{ character[field] if character[field] is not none else "—" }} → <strong>{{ proposed }}</strong>
+        </label>
+      {% endif %}
+    {% endfor %}
+  </div>
+
+  {% if proposal.new_spells %}
+    <h3>New Spells</h3>
+    <ul class="item-list">
+      {% for spell in proposal.new_spells %}
+        <li class="item-row item-row--card">
+          <label class="item-summary">
+            <input type="checkbox" name="accept_spell" value="{{ loop.index0 }}" checked>
+            <strong>{{ spell.name }}</strong>
+            {% if spell.rank %}<span class="tag">{{ spell.rank }}</span>{% endif %}
+            {% if spell.action_cost %}<span class="tag">{{ spell.action_cost }}</span>{% endif %}
+            {% if spell.damage_formula %}<span class="tag">Dmg {{ spell.damage_formula }}</span>{% endif %}
+          </label>
+          {% if spell.effect %}<p class="item-effect">{{ spell.effect }}</p>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% if proposal.new_equipment %}
+    <h3>New Equipment</h3>
+    <ul class="item-list">
+      {% for item in proposal.new_equipment %}
+        <li class="item-row item-row--card">
+          <label class="item-summary">
+            <input type="checkbox" name="accept_equipment" value="{{ loop.index0 }}" checked>
+            <strong>{{ item.name }}</strong>
+            {% if item.damage_formula %}<span class="tag">Dmg {{ item.damage_formula }}</span>{% endif %}
+            {% if item.agile %}<span class="tag">Agile</span>{% endif %}
+          </label>
+          {% if item.notes %}<p class="item-effect">{{ item.notes }}</p>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  {% if proposal.new_features %}
+    <h3>New Features</h3>
+    <ul class="item-list">
+      {% for feature in proposal.new_features %}
+        <li class="item-row item-row--card">
+          <label class="item-summary">
+            <input type="checkbox" name="accept_feature" value="{{ loop.index0 }}" checked>
+            <strong>{{ feature.name }}</strong>
+            {% if feature.source %}<span class="tag">{{ feature.source }}</span>{% endif %}
+            {% if feature.level_gained is not none %}<span class="tag">Level {{ feature.level_gained }}</span>{% endif %}
+          </label>
+          {% if feature.effect %}<p class="item-effect">{{ feature.effect }}</p>{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <button type="submit" class="btn btn--primary">Apply accepted changes</button>
+</form>

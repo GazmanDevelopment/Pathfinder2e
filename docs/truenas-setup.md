@@ -176,6 +176,11 @@ OIDC_AUTHELIA_CLIENT_SECRET=<the PLAINTEXT client secret from step 3>
 # A plain env var like every other secret here: NOT one of the
 # skip-worktree-protected authelia/ files, so a normal `git pull` on this
 # box picks up code changes around it with no special dance needed.
+# AI_LEVELUP_PROVIDER picks the backend: "anthropic" (default, needs
+# ANTHROPIC_API_KEY) or "ollama" (a self-hosted Ollama/Open WebUI server,
+# needs OLLAMA_BASE_URL/OLLAMA_MODEL instead) — only that one provider's
+# vars need to be set. docker-compose.yml already has both sets of vars
+# with the unused one commented out; uncomment whichever you're using.
 ANTHROPIC_API_KEY=<key from console.anthropic.com>
 ```
 
@@ -229,6 +234,10 @@ from `.env`.
 >       # /admin/users instead of hand-editing users_database.yml over SSH.
 >       AUTHELIA_USERS_DB_PATH: "/authelia-config/users_database.yml"
 >       # Phase 8, optional — omit to leave "Level up with AI" disabled.
+>       # Or point at a self-hosted Ollama/Open WebUI server instead:
+>       # AI_LEVELUP_PROVIDER: "ollama"
+>       # OLLAMA_BASE_URL: "http://192.168.1.50:11434/v1"
+>       # OLLAMA_MODEL: "llama3.1:70b"
 >       ANTHROPIC_API_KEY: "<same as .env above>"
 >     volumes:
 >       - /mnt/<pool>/apps/pf2e-sheets/Pathfinder2e/data:/data

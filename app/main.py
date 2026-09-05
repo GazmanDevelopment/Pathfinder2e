@@ -20,7 +20,7 @@ from app.db import (
     seed_reference_library,
 )
 from app.deps import get_character_or_404
-from app.routers import admin, auth, avatar, characters, equipment, features, notes, proficiencies, spells
+from app.routers import admin, auth, avatar, characters, equipment, features, level_up, notes, proficiencies, spells
 from app.templating import templates
 
 if not SESSION_SECRET:
@@ -86,6 +86,13 @@ app.include_router(equipment.router, dependencies=_owned)
 app.include_router(features.router, dependencies=_owned)
 app.include_router(notes.router, dependencies=_owned)
 app.include_router(avatar.router, dependencies=_owned)
+
+# level_up.router's own routes already depend on require_ai_levelup_access,
+# whose dependency chain (get_writable_character -> get_character_or_404)
+# covers ownership/existence/archived-status itself — only require_login
+# needs adding here, not the full _owned list, to avoid a redundant second
+# get_character_or_404 resolution.
+app.include_router(level_up.router, dependencies=[Depends(require_login)])
 
 
 ERROR_HEADINGS = {

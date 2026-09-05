@@ -1,0 +1,35 @@
+<div id="level-up-panel">
+  {% if error %}
+    <p class="form-error">{{ error }}</p>
+  {% endif %}
+
+  {% if messages %}
+    <div class="level-up-thread">
+      {% for msg in messages %}
+        <div class="level-up-message level-up-message--{{ msg.role }}">
+          <strong>{{ "You" if msg.role == "user" else "Claude" }}</strong>
+          <p>{{ msg.content }}</p>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if proposal %}
+    {% include "level_up/_proposal_diff.html" %}
+  {% endif %}
+
+  <form hx-post="/characters/{{ character_id }}/level-up/{{ 'message' if session else 'start' }}"
+        hx-target="#level-up-panel" hx-swap="outerHTML" class="level-up-reply-form">
+    <textarea name="{{ 'message' if session else 'note' }}"
+              placeholder="{{ 'Reply to refine the proposal…' if session else 'Describe what happened — new level, items, feats…' }}"
+              required></textarea>
+    <button type="submit" class="btn btn--primary">Send</button>
+  </form>
+
+  {% if session %}
+    <form method="post" action="/characters/{{ character_id }}/level-up/discard" class="inline-form"
+          onsubmit="return confirm('Discard this level-up conversation? Nothing has been applied yet.');">
+      <button type="submit" class="btn btn--ghost">Discard</button>
+    </form>
+  {% endif %}
+</div>
