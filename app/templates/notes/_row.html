@@ -4,16 +4,18 @@
     <strong>{{ note.title or "(untitled)" }}</strong>
   </div>
   {% if note.body %}<div class="item-effect ql-editor">{{ note.body | rich_text }}</div>{% endif %}
-  <div class="item-actions">
-    {# Pinning reorders the list (unlike Edit/Delete), so it targets the
-       whole #note-list (issue #46) rather than this one <li> — swapping a
-       single row can't relocate it within the DOM. Still only the <ul>'s
-       innerHTML, never the ancestor <details>, per issue #39's lesson. #}
-    <button type="button" class="btn btn--ghost" hx-post="/characters/{{ character_id }}/notes/{{ note.id }}/pin"
-            hx-target="#note-list" hx-swap="innerHTML">{{ "Unpin" if note.is_pinned else "Pin" }}</button>
-    <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/notes/{{ note.id }}/edit"
-            hx-target="#note-row-{{ note.id }}" hx-swap="outerHTML">Edit</button>
-    <button type="button" class="btn btn--danger" hx-delete="/characters/{{ character_id }}/notes/{{ note.id }}"
-            hx-target="#note-row-{{ note.id }}" hx-swap="outerHTML" hx-confirm="Delete this note?">Delete</button>
-  </div>
+  {% if not read_only %}
+    <div class="item-actions">
+      {# Pinning reorders the list (unlike Edit/Delete), so it targets the
+         whole #note-list (issue #46) rather than this one <li> — swapping a
+         single row can't relocate it within the DOM. Still only the <ul>'s
+         innerHTML, never the ancestor <details>, per issue #39's lesson. #}
+      <button type="button" class="btn btn--ghost" hx-post="/characters/{{ character_id }}/notes/{{ note.id }}/pin"
+              hx-target="#note-list" hx-swap="innerHTML">{{ "Unpin" if note.is_pinned else "Pin" }}</button>
+      <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/notes/{{ note.id }}/edit"
+              hx-target="#note-row-{{ note.id }}" hx-swap="outerHTML">Edit</button>
+      <button type="button" class="btn btn--danger" hx-delete="/characters/{{ character_id }}/notes/{{ note.id }}"
+              hx-target="#note-row-{{ note.id }}" hx-swap="outerHTML" hx-confirm="Delete this note?">Delete</button>
+    </div>
+  {% endif %}
 </li>

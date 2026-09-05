@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Level up with AI{% endblock %}
+
+{% block content %}
+  <h1>Level up with AI</h1>
+  <p class="login-sub">
+    Describe what happened — new level, DM-granted items, feat choices — and
+    Claude will propose an updated sheet. Nothing is saved until you review
+    the proposal and apply it; reply as many times as you like first to
+    refine it.
+  </p>
+
+  {% include "level_up/_transcript.html" %}
+{% endblock %}

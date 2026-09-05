@@ -18,6 +18,14 @@ def _set_sqlite_pragmas(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.execute("PRAGMA foreign_keys=ON")
+        # SQLite allows only one writer at a time; without this, a second
+        # concurrent write fails immediately with "database is locked"
+        # instead of waiting briefly for the first to finish (reproduced
+        # directly: two overlapping sessions each trying to INSERT one row
+        # — the second's flush raised OperationalError right away with the
+        # default busy_timeout of 0). 5s is comfortably longer than any
+        # single write this app does.
+        cursor.execute("PRAGMA busy_timeout=5000")
         cursor.close()
 
 

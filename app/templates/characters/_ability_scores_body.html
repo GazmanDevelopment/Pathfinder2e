@@ -14,5 +14,7 @@
     </div>
   {% endfor %}
 </div>
-<button type="button" class="btn btn--ghost" hx-get="/characters/{{ character.id }}/ability-scores/edit"
-        hx-target="#ability-scores-body" hx-swap="innerHTML">Edit</button>
+{% if not read_only %}
+  <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character.id }}/ability-scores/edit"
+          hx-target="#ability-scores-body" hx-swap="innerHTML">Edit</button>
+{% endif %}

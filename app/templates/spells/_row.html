@@ -21,13 +21,17 @@
          unclamped, record-what-happened style, just sized to sit inline
          with the other tags instead of its own block. #}
       <span class="uses-adjust">
-        <button type="button" class="btn-step btn-step--small" aria-label="Decrease {{ spell.name }} remaining uses by 1"
-                hx-post="/characters/{{ character_id }}/spells/{{ spell.id }}/uses/adjust" hx-vals='{"delta": -1}'
-                hx-target="#spell-row-{{ spell.id }}" hx-swap="outerHTML">&minus;</button>
+        {% if not read_only %}
+          <button type="button" class="btn-step btn-step--small" aria-label="Decrease {{ spell.name }} remaining uses by 1"
+                  hx-post="/characters/{{ character_id }}/spells/{{ spell.id }}/uses/adjust" hx-vals='{"delta": -1}'
+                  hx-target="#spell-row-{{ spell.id }}" hx-swap="outerHTML">&minus;</button>
+        {% endif %}
         <span class="tag uses-count">{{ spell.uses_current if spell.uses_current is not none else 0 }}/{{ spell.uses_max }}</span>
-        <button type="button" class="btn-step btn-step--small" aria-label="Increase {{ spell.name }} remaining uses by 1"
-                hx-post="/characters/{{ character_id }}/spells/{{ spell.id }}/uses/adjust" hx-vals='{"delta": 1}'
-                hx-target="#spell-row-{{ spell.id }}" hx-swap="outerHTML">+</button>
+        {% if not read_only %}
+          <button type="button" class="btn-step btn-step--small" aria-label="Increase {{ spell.name }} remaining uses by 1"
+                  hx-post="/characters/{{ character_id }}/spells/{{ spell.id }}/uses/adjust" hx-vals='{"delta": 1}'
+                  hx-target="#spell-row-{{ spell.id }}" hx-swap="outerHTML">+</button>
+        {% endif %}
       </span>
     {% endif %}
     {% if spell.attack_bonus is not none %}<span class="tag">Atk {{ "%+d"|format(spell.attack_bonus) }}</span>{% endif %}
@@ -35,7 +39,7 @@
     {% if spell.flags %}<span class="tag">{{ spell.flags }}</span>{% endif %}
   </div>
   {% if spell.effect %}<p class="item-effect ql-editor">{{ spell.effect | rich_text }}</p>{% endif %}
-  {% if spell.reference_id and spell.reference and spell.reference.source_version != spell.reference_version %}
+  {% if not read_only and spell.reference_id and spell.reference and spell.reference.source_version != spell.reference_version %}
     <div class="reference-badge">
       <span class="tag tag--reference">Book updated</span>
       <button type="button" class="btn btn--ghost btn--small"
@@ -43,22 +47,24 @@
               hx-target="#spell-row-{{ spell.id }}" hx-swap="outerHTML">Refresh from library</button>
     </div>
   {% endif %}
-  <div class="item-actions">
-    {# Reordering (issue #48) moves this row's position, so — like Pin
-       Notes (#46) — it targets the whole #spell-list, not this row. #}
-    <span class="reorder-buttons">
-      <button type="button" class="btn-step btn-step--small" aria-label="Move {{ spell.name }} up"
-              {% if is_first %}disabled{% endif %}
-              hx-post="/characters/{{ character_id }}/spells/{{ spell.id }}/move" hx-vals='{"direction": "up"}'
-              hx-target="#spell-list" hx-swap="innerHTML">&uarr;</button>
-      <button type="button" class="btn-step btn-step--small" aria-label="Move {{ spell.name }} down"
-              {% if is_last %}disabled{% endif %}
-              hx-post="/characters/{{ character_id }}/spells/{{ spell.id }}/move" hx-vals='{"direction": "down"}'
-              hx-target="#spell-list" hx-swap="innerHTML">&darr;</button>
-    </span>
-    <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/spells/{{ spell.id }}/edit"
-            hx-target="#spell-row-{{ spell.id }}" hx-swap="outerHTML">Edit</button>
-    <button type="button" class="btn btn--danger" hx-delete="/characters/{{ character_id }}/spells/{{ spell.id }}"
-            hx-target="#spell-row-{{ spell.id }}" hx-swap="outerHTML" hx-confirm="Delete this spell?">Delete</button>
-  </div>
+  {% if not read_only %}
+    <div class="item-actions">
+      {# Reordering (issue #48) moves this row's position, so — like Pin
+         Notes (#46) — it targets the whole #spell-list, not this row. #}
+      <span class="reorder-buttons">
+        <button type="button" class="btn-step btn-step--small" aria-label="Move {{ spell.name }} up"
+                {% if is_first %}disabled{% endif %}
+                hx-post="/characters/{{ character_id }}/spells/{{ spell.id }}/move" hx-vals='{"direction": "up"}'
+                hx-target="#spell-list" hx-swap="innerHTML">&uarr;</button>
+        <button type="button" class="btn-step btn-step--small" aria-label="Move {{ spell.name }} down"
+                {% if is_last %}disabled{% endif %}
+                hx-post="/characters/{{ character_id }}/spells/{{ spell.id }}/move" hx-vals='{"direction": "down"}'
+                hx-target="#spell-list" hx-swap="innerHTML">&darr;</button>
+      </span>
+      <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/spells/{{ spell.id }}/edit"
+              hx-target="#spell-row-{{ spell.id }}" hx-swap="outerHTML">Edit</button>
+      <button type="button" class="btn btn--danger" hx-delete="/characters/{{ character_id }}/spells/{{ spell.id }}"
+              hx-target="#spell-row-{{ spell.id }}" hx-swap="outerHTML" hx-confirm="Delete this spell?">Delete</button>
+    </div>
+  {% endif %}
 </li>

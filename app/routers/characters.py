@@ -4,8 +4,9 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
 from sqlalchemy.orm import Session
 
+from app.config import ai_levelup_configured
 from app.db import get_db
-from app.deps import get_character_or_404
+from app.deps import get_character_or_404, get_writable_character
 from app.models import Character, Proficiency, User
 from app.pathbuilder import PathbuilderImportError, build_export_payload, fetch_build, apply_import
 from app.seed_data import DEFAULT_PROFICIENCY_NAMES
@@ -18,7 +19,10 @@ router = APIRouter(prefix="/characters", tags=["characters"])
 def list_characters(request: Request, owner_id: int | None = None, db: Session = Depends(get_db)):
     user = request.session["user"]
     is_admin = user["role"] == "admin"
-    query = db.query(Character).order_by(Character.id)
+    # Archives (Phase 8) are ordinary characters rows kept only as read-only
+    # history off their live character — never a separate pickable character
+    # in their own right, so they never appear in any of this route's lists.
+    query = db.query(Character).filter(Character.is_archived.is_(False)).order_by(Character.id)
     viewing_owner = None
 
     if not is_admin:
@@ -72,7 +76,7 @@ def import_pathbuilder(request: Request, build_id: str = Form(...), db: Session 
     except PathbuilderImportError as exc:
         user = request.session["user"]
         is_admin = user["role"] == "admin"
-        query = db.query(Character).order_by(Character.id)
+        query = db.query(Character).filter(Character.is_archived.is_(False)).order_by(Character.id)
         if not is_admin:
             query = query.filter(Character.user_id == user["id"])
         else:
@@ -99,10 +103,37 @@ def import_pathbuilder(request: Request, build_id: str = Form(...), db: Session 
 
 @router.get("/{character_id}")
 def character_sheet(
-    request: Request, character: Character = Depends(get_character_or_404)
+    request: Request, character: Character = Depends(get_character_or_404), db: Session = Depends(get_db)
 ):
+    # read_only is set ONCE here and relied on to propagate through every
+    # nested {% include %} below it (none of them use "without context") —
+    # every mutating-control template checks it, but the actual security
+    # boundary is get_writable_character (Phase 8), not this flag; this is
+    # only the matching UI treatment so a read-only sheet doesn't show
+    # controls that would just 403 anyway.
+    read_only = character.is_archived
+    ai_levelup_available = (
+        not read_only
+        and ai_levelup_configured()
+        and (character.owner.can_use_ai_levelup or character.owner.role == "admin")
+    )
+    archives = (
+        db.query(Character)
+        .filter(Character.parent_character_id == character.id, Character.is_archived.is_(True))
+        .order_by(Character.created_at.desc())
+        .all()
+        if not read_only
+        else []
+    )
     return templates.TemplateResponse(
-        "characters/sheet.html", {"request": request, "character": character}
+        "characters/sheet.html",
+        {
+            "request": request,
+            "character": character,
+            "read_only": read_only,
+            "ai_levelup_available": ai_levelup_available,
+            "archives": archives,
+        },
     )
 
 
@@ -118,7 +149,19 @@ def export_pathbuilder(character: Character = Depends(get_character_or_404)):
 
 
 @router.delete("/{character_id}")
-def delete_character(character: Character = Depends(get_character_or_404), db: Session = Depends(get_db)):
+def delete_character(character: Character = Depends(get_writable_character), db: Session = Depends(get_db)):
+    # A live character's archives (Phase 8) reference it via
+    # parent_character_id with no ON DELETE CASCADE — SQLite can't add that
+    # to an existing column's FK without rebuilding the table, which isn't
+    # worth doing for this — so leaving them in place would make this
+    # delete fail outright (reproduced directly: sqlite3.IntegrityError,
+    # "FOREIGN KEY constraint failed", not a graceful 400). Archives are
+    # pure history of this specific character; once it's gone, so is its
+    # history, matching the existing delete confirmation's own wording
+    # ("This removes everything on their sheet").
+    db.query(Character).filter(
+        Character.parent_character_id == character.id, Character.is_archived.is_(True)
+    ).delete(synchronize_session=False)
     db.delete(character)
     db.commit()
     return ""
@@ -141,7 +184,7 @@ def edit_header(request: Request, character: Character = Depends(get_character_o
 @router.put("/{character_id}/header")
 def save_header(
     request: Request,
-    character: Character = Depends(get_character_or_404),
+    character: Character = Depends(get_writable_character),
     db: Session = Depends(get_db),
     name: str = Form(...),
     ancestry: str = Form(""),
@@ -180,7 +223,7 @@ def show_core_stats(request: Request, character: Character = Depends(get_charact
 @router.post("/{character_id}/hp/adjust")
 def adjust_hp(
     request: Request,
-    character: Character = Depends(get_character_or_404),
+    character: Character = Depends(get_writable_character),
     db: Session = Depends(get_db),
     delta: int = Form(...),
 ):
@@ -211,7 +254,7 @@ def _int_or_none(value: str):
 @router.put("/{character_id}/core-stats")
 def save_core_stats(
     request: Request,
-    character: Character = Depends(get_character_or_404),
+    character: Character = Depends(get_writable_character),
     db: Session = Depends(get_db),
     hp_current: str = Form(""),
     hp_max: str = Form(""),
@@ -254,7 +297,7 @@ def edit_ability_scores(request: Request, character: Character = Depends(get_cha
 @router.put("/{character_id}/ability-scores")
 def save_ability_scores(
     request: Request,
-    character: Character = Depends(get_character_or_404),
+    character: Character = Depends(get_writable_character),
     db: Session = Depends(get_db),
     str_score: str = Form(""),
     str_mod: str = Form(""),
@@ -308,7 +351,7 @@ def edit_money(request: Request, character: Character = Depends(get_character_or
 @router.put("/{character_id}/money")
 def save_money(
     request: Request,
-    character: Character = Depends(get_character_or_404),
+    character: Character = Depends(get_writable_character),
     db: Session = Depends(get_db),
     pp: str = Form(""),
     gp: str = Form(""),

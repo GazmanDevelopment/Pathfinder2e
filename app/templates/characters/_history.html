@@ -1,0 +1,15 @@
+{% if archives %}
+  <details class="sheet-section">
+    <summary><h2>History</h2></summary>
+    <ul class="item-list">
+      {% for archive in archives %}
+        <li class="item-row item-row--compact">
+          <a href="/characters/{{ archive.id }}" class="item-field item-field--name">
+            Level {{ archive.level if archive.level is not none else "—" }}
+            (archived {{ archive.created_at.strftime("%Y-%m-%d") }})
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </details>
+{% endif %}

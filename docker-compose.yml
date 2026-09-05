@@ -30,8 +30,14 @@ services:
       AUTHELIA_USERS_DB_PATH: "/authelia-config/users_database.yml"
       # Phase 8 (optional): enables "Level up with AI" on a character's
       # sheet, gated per-user from /admin/users. Unset hides the feature
-      # entirely — no code path depends on it existing.
+      # entirely — no code path depends on it existing. AI_LEVELUP_PROVIDER
+      # picks which backend below is actually used ("anthropic", the
+      # default, or "ollama" for a self-hosted Ollama/Open WebUI server) —
+      # only that one provider's own vars need to be set.
+      AI_LEVELUP_PROVIDER: "anthropic"
       ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+      # OLLAMA_BASE_URL: "http://192.168.1.50:11434/v1"
+      # OLLAMA_MODEL: "llama3.1:70b"
     volumes:
       - ./data:/data
       - ./uploads:/uploads
