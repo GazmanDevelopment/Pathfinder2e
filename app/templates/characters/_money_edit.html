@@ -1,0 +1,11 @@
+<form hx-put="/characters/{{ character.id }}/money" hx-target="#money-body" hx-swap="innerHTML" class="field-grid">
+  <label>Platinum (pp) <input type="number" name="pp" value="{{ character.pp if character.pp is not none else '' }}"></label>
+  <label>Gold (gp) <input type="number" name="gp" value="{{ character.gp if character.gp is not none else '' }}"></label>
+  <label>Silver (sp) <input type="number" name="sp" value="{{ character.sp if character.sp is not none else '' }}"></label>
+  <label>Copper (cp) <input type="number" name="cp" value="{{ character.cp if character.cp is not none else '' }}"></label>
+  <div class="item-actions">
+    <button type="submit" class="btn btn--primary">Save</button>
+    <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character.id }}/money"
+            hx-target="#money-body" hx-swap="innerHTML">Cancel</button>
+  </div>
+</form>
