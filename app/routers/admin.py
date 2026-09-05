@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import authelia_sync
-from app.config import AUTHELIA_USERS_DB_PATH
+from app.config import ANTHROPIC_API_KEY, AUTHELIA_USERS_DB_PATH
 from app.db import get_db
 from app.models import Character, User
 from app.templating import templates
@@ -64,6 +64,7 @@ def list_users(
             "char_counts": char_counts,
             "admin_count": _admin_count(db),
             "authelia_configured": bool(AUTHELIA_USERS_DB_PATH),
+            "ai_levelup_configured": bool(ANTHROPIC_API_KEY),
         },
     )
 
@@ -106,6 +107,26 @@ def enable_user(user_id: int, db: Session = Depends(get_db)):
     user.is_disabled = False
     db.commit()
     return RedirectResponse(url="/admin/users?filter=disabled", status_code=303)
+
+
+@router.post("/users/{user_id}/grant-ai-levelup")
+def grant_ai_levelup(user_id: int, filter: str = Form("active"), db: Session = Depends(get_db)):
+    """Phase 8 — independent of role/is_disabled. Checked live against the
+    DB on every /level-up request (see app/deps.py's
+    require_ai_levelup_access), so revocation takes effect immediately even
+    for an already-open session, same guarantee Phase 4b gave is_disabled."""
+    user = _get_user_or_404(user_id, db)
+    user.can_use_ai_levelup = True
+    db.commit()
+    return RedirectResponse(url=f"/admin/users?filter={filter}", status_code=303)
+
+
+@router.post("/users/{user_id}/revoke-ai-levelup")
+def revoke_ai_levelup(user_id: int, filter: str = Form("active"), db: Session = Depends(get_db)):
+    user = _get_user_or_404(user_id, db)
+    user.can_use_ai_levelup = False
+    db.commit()
+    return RedirectResponse(url=f"/admin/users?filter={filter}", status_code=303)
 
 
 @router.post("/users/{user_id}/delete")

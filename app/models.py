@@ -32,6 +32,12 @@ class User(Base):
     # and its unique index — declaring it here alone doesn't retrofit a live
     # table (see that function's docstring).
     local_username: Mapped[str | None] = mapped_column(String, nullable=True, unique=True)
+    # Admin-granted access to the AI level-up tool (Phase 8), independent of
+    # role/is_disabled — set from /admin/users, checked live (not from the
+    # session-cached role) so revocation takes effect immediately, same
+    # guarantee Phase 4b gave is_disabled. Existing databases need
+    # app/db.py's run_startup_migrations() to add this column.
+    can_use_ai_levelup: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 
@@ -82,6 +88,21 @@ class Character(Base):
 
     avatar_path: Mapped[str | None] = mapped_column(String, nullable=True)
     avatar_thumb_path: Mapped[str | None] = mapped_column(String, nullable=True)
+
+    # AI level-up archive chain (Phase 8). An archive is an ordinary
+    # characters row with is_archived=True, cloned from the live character
+    # at the moment a level-up proposal was applied; parent_character_id
+    # points at the LIVE character's id (the live row's own id never
+    # changes — archives point backward at it), forming a one-level
+    # history list, never a deeper chain. No relationship() is defined for
+    # this — the "History" list is a plain router-level query
+    # (parent_character_id == live.id, is_archived == True), sidestepping
+    # self-referential-FK relationship pitfalls entirely. Existing
+    # databases need run_startup_migrations() to add both columns.
+    is_archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    parent_character_id: Mapped[int | None] = mapped_column(
+        ForeignKey("characters.id"), nullable=True
+    )
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
@@ -293,3 +314,37 @@ class Note(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
 
     character: Mapped["Character"] = relationship(back_populates="notes")
+
+
+class LevelUpSession(Base):
+    """An in-progress AI level-up conversation (Phase 8) — the working area
+    between "player typed a note" and "player applied a reviewed proposal."
+    Nothing here ever touches the live character; app/ai_levelup.py's
+    archive_and_apply() is the only thing that does, and only once, at
+    final accept (never per-field as-you-go). Deleted on apply or discard.
+
+    A brand-new table — no run_startup_migrations() entry needed;
+    Base.metadata.create_all() creates any missing table on its own.
+    """
+
+    __tablename__ = "level_up_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    # unique=True enforces "at most one in-progress session per character"
+    # for free — no application-level locking needed.
+    character_id: Mapped[int] = mapped_column(
+        ForeignKey("characters.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    # JSON list of {"role": "user"|"assistant", "content": <str>} — the
+    # plain chat transcript resent to Claude every turn (the API is
+    # stateless). A messages.parse() reply's content is plain JSON text, no
+    # tool_use/thinking blocks to preserve, so this is always a flat string.
+    messages_json: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
+    # The LATEST turn's proposal (LevelUpProposal, JSON-encoded), or NULL if
+    # the latest turn was purely conversational (e.g. a clarifying
+    # question) with nothing concrete to show yet.
+    latest_proposal_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
+
+    character: Mapped["Character"] = relationship()
