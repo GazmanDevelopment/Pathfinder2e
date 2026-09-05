@@ -77,9 +77,20 @@ def start_level_up(
 ):
     session = _get_session(character_id, db)
     if session is None:
+        # Committed immediately, before the slow AI call below — not left
+        # open across it. A write transaction (started by this insert)
+        # holds SQLite's single writer lock for as long as it stays
+        # uncommitted, and an AI call can run 30-120+ seconds; leaving it
+        # open that whole time would block every other write anywhere in
+        # the app for that entire window, not just this row (reproduced
+        # directly: two overlapping writes with no intervening commit
+        # raised "database is locked"). send_turn() below only mutates
+        # this already-persisted object's attributes in memory; the
+        # second commit further down persists those.
         session = LevelUpSession(character_id=character_id)
         db.add(session)
-        db.flush()
+        db.commit()
+        db.refresh(session)
     try:
         send_turn(character, session, note)
     except AiLevelUpError as exc:
