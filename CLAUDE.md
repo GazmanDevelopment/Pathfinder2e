@@ -240,10 +240,14 @@ Each phase leaves something that runs. **Auth comes after the app works.**
   licensing basis below, not just a README mention. Purely additive — with
   an empty/un-ingested library the search box just returns no results, and
   the attribution footer doesn't render at all.
-- **Phase 8 — AI-assisted level-up (optional).** Send the current sheet + a
-  free-text note to Claude, get back a proposed leveled-up sheet, review it as a
-  diff, archive the pre-level-up character on accept. Fully optional; the app is
-  complete and usable without it. See below.
+- **Phase 8 — AI-assisted level-up (optional) — done.** Built and shipped
+  across three stages/PRs (issue #55, GitHub PRs #56-#58); see below for the
+  full detail on what was actually built, which differs from the original
+  single-shot plan in a few real ways (a genuine multi-turn conversation, a
+  switchable local/hosted backend, and additions-only proposals rather than
+  wholesale rewrites of existing rows). Fully optional throughout — with no
+  provider configured, the feature is invisible and the app behaves exactly
+  as it does without it.
 
 ---
 
@@ -352,55 +356,126 @@ structured dataset rather than scraping Archives of Nethys' presentation.
 
 ---
 
-## AI-assisted level-up (optional, Phase 8)
+## AI-assisted level-up (Phase 8 — done)
 
-Build this last, after everything else works. It's an optional convenience, not
-a dependency of the sheet — if the API key isn't configured, the feature is
-simply hidden and the app behaves exactly as it does today.
+Shipped across three stages/PRs against GitHub issue #55: foundation/permissions
+(PR #56), the conversation engine + archive-on-accept (PR #57), and the
+read-only archived view + History section + entry point (PR #58). Optional
+throughout — with no provider configured, `ai_levelup_configured()`
+(`app/config.py`) is false, the "Level up with AI" toolbar link never renders,
+and every `/level-up` route 404s as if it doesn't exist.
 
-**What it does:** the player types a free-text note ("hit level 5, took Toughness,
-DM gave me a +1 striking dagger and let me swap a skill feat") on their character
-page. The app serializes the character's *entire* current sheet (all child
-tables) plus that note into a prompt, sends it to the Claude API, and gets back
-a proposed *complete* leveled-up sheet — new level, HP, proficiency ranks, new
-spell slots, suggested new spells/feats/features, updated DCs — as structured
-data matching the existing data model.
+**What it does — a real conversation, not one shot.** The player opens
+"Level up with AI" from the sheet toolbar, types a free-text note ("hit level
+5, took Toughness, DM gave me a +1 striking dagger"), and the app serializes
+the character's entire current sheet plus the note into a prompt
+(`app/ai_levelup.py`'s `character_to_dict()`/`build_system_blocks()`). The
+model replies with a `message` (plain chat text) and, once it has something
+concrete, a `proposal` — the player can keep replying in plain text as many
+times as they like ("give me a different feat instead") to refine the
+proposal before ever applying anything; this back-and-forth was an explicit
+requirement from the start, not something added later. `LevelUpSession`
+(one in-progress conversation per character, enforced by a DB `unique`
+constraint on `character_id`) holds the whole message history and the latest
+proposal as JSON, resumed on every page load until applied or discarded.
 
-**Never write directly.** This follows the same principle as reference lookup
-(§3 above): the model's output is a *prefill*, not an authority.
-- Show the proposal as a **diff view** against the current sheet: every changed
-  field and every added/removed row, old vs. proposed, before/after.
-- The user accepts, edits, or rejects **per field/per row** — nothing is applied
-  wholesale. A proposed value the DM wouldn't allow just gets edited or dropped,
-  same as typing over any other field on this sheet.
-- Claude is working from published PF2e leveling rules and can be wrong or
-  miss table-specific homebrew; the note is the user's way to steer it, not a
-  guarantee it will be followed correctly. Treat its output with the same
-  skepticism as a first-pass suggestion, never as ground truth.
+**Two interchangeable backends, picked by one env var — not just Claude.**
+`AI_LEVELUP_PROVIDER` (`app/config.py`) is `"anthropic"` (default) or
+`"ollama"`, switching the whole app's behavior, not a per-request choice:
+- **Anthropic** — the official SDK, model pinned to `claude-haiku-4-5-20251001`
+  (not Opus/Fable — Haiku doesn't support the `effort` request parameter,
+  learned from a real 400). `ANTHROPIC_API_KEY` required.
+- **Ollama / Open WebUI** — a self-hosted server's OpenAI-compatible
+  `/chat/completions` endpoint via plain `httpx` (matching `app/pathbuilder.py`'s
+  precedent of not reaching for a new SDK for one JSON POST). `OLLAMA_BASE_URL`
+  + `OLLAMA_MODEL` required. Local open-weight models are markedly less
+  reliable at following a schema, so this path retries once with a sharper
+  instruction before giving up, and every provider call is wrapped so a
+  failure becomes a plain in-chat error message, never a raw 500.
+- **Neither path uses grammar-constrained structured output** (Claude's
+  `output_format=`/`output_config.format`, or Ollama's strict
+  `response_format.json_schema`) — a real, encountered Claude 400 ("the
+  compiled grammar is too large... reduce the number of strict tools") meant
+  abandoning that mechanism entirely. Both providers instead get the schema
+  as text in the system prompt and their reply is parsed as plain JSON
+  (`_parse_turn()`, tolerant of a stray markdown code fence), with the same
+  one-retry-then-give-up pattern either way.
 
-**Archive on accept.** When the user accepts the leveled-up sheet:
-- Clone the current character row (and its child rows) into a new row with
-  `is_archived = true` and `parent_character_id` pointing at... itself being the
-  prior state — i.e. the *archive* keeps the old level's data, and the live
-  character row is updated in place to the new level, with the archive's
-  `parent_character_id` set to the live character's id. (Equivalently: archives
-  form a backward-linked history chain off the live character.)
-- Archived characters are **read-only** and shown as a "history" list under the
-  live character (e.g. "Level 4 (archived 2026-08-29)"), not in the main
-  character picker.
-- This reuses ordinary character CRUD — an archive is just another `characters`
-  row — no new table needed.
+**Proposals only ever add — never modify or delete anything that already
+exists on the sheet.** This is a bigger restriction than the original plan's
+"proposed complete leveled-up sheet," and follows directly from this app's
+"copy, don't link" principle (§3): a proposal can update scalar `Character`
+fields (level, HP max, AC, DCs, ability scores — never `hp_current` or
+`hero_points`) and add brand-new `Spell`/`Equipment`/`Feature`/`Note` rows,
+but an existing row is read-only context for the model, never something it
+can edit or remove. The system prompt also tells the model to default to a
+concrete proposal (using ordinary PF2e defaults for anything unstated, and
+saying so in `message`) rather than asking clarifying questions first —
+asking first only costs the player a round trip toward whichever provider's
+usage limit, when the same guess could just as easily be corrected afterward
+like any other row on this sheet. A proposed row never gets a numeric
+`attack_bonus` (depends on the wielder's own stats) or `reference_id` (not
+sourced from the reference library). A `new_notes` entry — e.g. a "Quick
+Combat Reference" summarizing strong action combos — is proposed only when
+clearly useful or explicitly asked for, matching the `notes` table's own
+long-standing description below.
+
+**The diff view is accept/reject-per-row, not inline editing.** Every
+scalar field change and every new row shows a checkbox (checked by default);
+refining a proposed value happens by replying in chat, not by hand-editing
+the diff. Only the checked subset is ever applied.
+
+**Archive on accept** (`archive_and_apply()` in `app/ai_levelup.py`,
+`app/routers/level_up.py`'s `/apply` route): clones the character's current
+state (and every child table's current rows) into a new `characters` row
+with `is_archived = true` and `parent_character_id` pointing at the live
+character's (unchanged) id, *before* applying any accepted change to the live
+row — the archive is a real, independent copy, never a re-parented original.
+Reuses ordinary character CRUD; no new table needed for the archive itself
+(`LevelUpSession` is the only new table, and it's deleted on apply or
+discard).
+- **Archived characters are genuinely read-only**, not just visually: every
+  mutating route (`get_writable_character` in `app/deps.py`, wired into both
+  `characters.py`'s own mutating routes and, at the router level in
+  `main.py`, all six per-character child routers) 403s against one,
+  regardless of who's asking. The sheet template threads a single
+  `read_only` flag down through every nested include to hide the matching
+  controls (Edit/Delete, tap counters, reorder, Pin, "Book updated" refresh,
+  every "+ Add" trigger) — cosmetic backing for that real boundary, not the
+  boundary itself.
+- Shown as a **History** section on the live character's sheet (e.g. "Level 4
+  (archived 2026-09-05)"), linking straight to the ordinary character-view
+  route — never in the main character picker. Archives don't chain further;
+  it's one level back to the live character only.
+- Deleting a live character with archives explicitly deletes its archives
+  first — `parent_character_id` has no `ON DELETE CASCADE` (SQLite can't add
+  one to an existing column without rebuilding the table), so leaving them in
+  place would fail the delete outright with a raw FK-constraint error.
+
+**Per-user permission, independent of `role`.** `User.can_use_ai_levelup`
+(admin-granted from `/admin/users`, checked live against the database rather
+than the session-cached role so a revoke takes effect immediately, same
+guarantee Phase 4b's `is_disabled` gives) gates access alongside the
+provider being configured at all — an admin always has access regardless of
+the flag. Gated with a 404, not a 403, when either check fails (hide, don't
+reveal — matching the `AUTHELIA_USERS_DB_PATH`/set-password precedent).
 
 **Implementation notes:**
-- New secret: an Anthropic API key. Same handling as the Entra client secret —
-  env var or secrets file on the dataset, never in the image (see Deployment).
-  If unset, hide the "Level up with AI" entry point entirely.
-- The prompt should include the full sheet (abilities, proficiencies, spells,
-  equipment, features, notes) so Claude has real context, not just the level
-  number — this is a homebrew-heavy game and the note alone won't carry enough
-  information about what the character already has.
-- No retries/auto-apply loop, no background job — this is a synchronous
-  request-and-review action the player does once per level-up.
+- Secrets — `ANTHROPIC_API_KEY`, or `OLLAMA_BASE_URL`/`OLLAMA_MODEL` for the
+  local path — same handling as the Entra client secret: env var or secrets
+  file on the dataset, never in the image (see Deployment).
+- The prompt includes the full sheet (abilities, proficiencies, spells,
+  equipment, features, notes) every turn, not just the level number — this is
+  a homebrew-heavy game and the note alone never carries enough context
+  about what the character already has.
+- No background job — every provider call is a synchronous request the
+  player waits on, but `start_level_up` commits its new `LevelUpSession`
+  *before* making that (potentially 30-120+ second, for a local model) call
+  rather than holding it inside an open write transaction — SQLite has only
+  one writer for the whole file, and an early version of this held that lock
+  across the entire slow call, blocking every other write in the app for the
+  duration (reproduced directly, then fixed alongside adding
+  `PRAGMA busy_timeout=5000` as a general robustness improvement).
 
 ---
 
