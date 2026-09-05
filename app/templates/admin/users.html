@@ -40,6 +40,7 @@
           {% if user.auth_source %}<span class="tag">{{ user.auth_source }}</span>{% endif %}
           {% if user.local_username %}<span class="tag">local: {{ user.local_username }}</span>{% endif %}
           {% if char_count %}<span class="tag">{{ char_count }} character{{ "s" if char_count != 1 }}</span>{% endif %}
+          {% if user.can_use_ai_levelup %}<span class="tag">AI level-up</span>{% endif %}
         </span>
         <span class="item-actions">
           {% if filter == "active" %}
@@ -49,6 +50,12 @@
           {% else %}
             <form method="post" action="/admin/users/{{ user.id }}/enable" class="inline-form">
               <button type="submit" class="btn btn--ghost">Enable</button>
+            </form>
+          {% endif %}
+          {% if ai_levelup_configured %}
+            <form method="post" action="/admin/users/{{ user.id }}/{{ 'revoke-ai-levelup' if user.can_use_ai_levelup else 'grant-ai-levelup' }}" class="inline-form">
+              <input type="hidden" name="filter" value="{{ filter }}">
+              <button type="submit" class="btn btn--ghost">{{ "Revoke AI level-up" if user.can_use_ai_levelup else "Grant AI level-up" }}</button>
             </form>
           {% endif %}
           <form method="post" action="/admin/users/{{ user.id }}/delete" class="inline-form"

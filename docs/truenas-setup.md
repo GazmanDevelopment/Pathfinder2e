@@ -172,6 +172,11 @@ is committed as-is — only actual secrets need to go here:
 SESSION_SECRET=<run: openssl rand -hex 32>
 OIDC_AUTHELIA_CLIENT_ID=pf2e-sheet
 OIDC_AUTHELIA_CLIENT_SECRET=<the PLAINTEXT client secret from step 3>
+# Phase 8, optional — omit entirely to leave "Level up with AI" disabled.
+# A plain env var like every other secret here: NOT one of the
+# skip-worktree-protected authelia/ files, so a normal `git pull` on this
+# box picks up code changes around it with no special dance needed.
+ANTHROPIC_API_KEY=<key from console.anthropic.com>
 ```
 
 Don't set `SESSION_HTTPS_ONLY` — leave it at its default (`true`). The proxy
@@ -223,6 +228,8 @@ from `.env`.
 >       # Phase 4c: lets an admin set a local account's password from
 >       # /admin/users instead of hand-editing users_database.yml over SSH.
 >       AUTHELIA_USERS_DB_PATH: "/authelia-config/users_database.yml"
+>       # Phase 8, optional — omit to leave "Level up with AI" disabled.
+>       ANTHROPIC_API_KEY: "<same as .env above>"
 >     volumes:
 >       - /mnt/<pool>/apps/pf2e-sheets/Pathfinder2e/data:/data
 >       - /mnt/<pool>/apps/pf2e-sheets/Pathfinder2e/uploads:/uploads

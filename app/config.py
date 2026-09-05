@@ -33,6 +33,12 @@ SESSION_HTTPS_ONLY = os.environ.get("SESSION_HTTPS_ONLY", "true").lower() != "fa
 # writing into a real Authelia file backend.
 AUTHELIA_USERS_DB_PATH = os.environ.get("AUTHELIA_USERS_DB_PATH", "")
 
+# Anthropic API key (Phase 8, optional). Same silently-hidden-optional
+# pattern as AUTHELIA_USERS_DB_PATH above, not SESSION_SECRET's hard
+# startup failure — unset simply hides the "Level up with AI" entry point
+# and the admin grant/revoke toggle, no code path depends on it existing.
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+
 # OIDC providers, keyed by the name used in /auth/{provider}/... URLs. Entra
 # joins this dict in Phase 3; the login page and routes are already generic
 # over it. `label` is what the "Sign in with …" button shows.

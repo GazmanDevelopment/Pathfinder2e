@@ -45,6 +45,14 @@ def run_startup_migrations(engine):
     Phase 7 adds reference_id/reference_version to spells/equipment/features
     the same way — plain nullable columns, no uniqueness needed, so just the
     ADD COLUMN guard, repeated per table.
+
+    Phase 8 adds users.can_use_ai_levelup and characters.is_archived (both
+    NOT NULL booleans defaulting to disabled/false for every existing row —
+    a single shared constant default is semantically correct for these,
+    unlike sort_order's per-row backfill above) plus
+    characters.parent_character_id (nullable, self-referential — no
+    existing row can already have a value, so a plain nullable ADD COLUMN
+    is enough, no backfill needed).
     """
     with engine.connect() as conn:
         cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(users)")}
@@ -80,6 +88,15 @@ def run_startup_migrations(engine):
         for coin in ("pp", "gp", "sp", "cp"):
             if coin not in cols:
                 conn.exec_driver_sql(f"ALTER TABLE characters ADD COLUMN {coin} INTEGER")
+        if "is_archived" not in cols:
+            conn.exec_driver_sql("ALTER TABLE characters ADD COLUMN is_archived BOOLEAN NOT NULL DEFAULT 0")
+        if "parent_character_id" not in cols:
+            conn.exec_driver_sql("ALTER TABLE characters ADD COLUMN parent_character_id INTEGER")
+        cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(users)")}
+        if "can_use_ai_levelup" not in cols:
+            conn.exec_driver_sql(
+                "ALTER TABLE users ADD COLUMN can_use_ai_levelup BOOLEAN NOT NULL DEFAULT 0"
+            )
         conn.commit()
 
 

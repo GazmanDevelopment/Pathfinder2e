@@ -28,6 +28,10 @@ services:
       # app can write it atomically (temp file + rename needs to share a
       # filesystem with its target). Unset to hide the feature entirely.
       AUTHELIA_USERS_DB_PATH: "/authelia-config/users_database.yml"
+      # Phase 8 (optional): enables "Level up with AI" on a character's
+      # sheet, gated per-user from /admin/users. Unset hides the feature
+      # entirely — no code path depends on it existing.
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
     volumes:
       - ./data:/data
       - ./uploads:/uploads
