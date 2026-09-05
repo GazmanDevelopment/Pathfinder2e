@@ -660,6 +660,16 @@ textarea {
   margin-top: 0.2rem;
 }
 
+/* The level-up diff repurposes .field-grid for old -> new value rows
+   rather than caption+control pairs, so the shared 0.65rem uppercase
+   caption styling above reads too small for an actual stat change. */
+.level-up-field-diff {
+  font-size: 0.95rem;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--ink);
+}
+
 .ability-grid fieldset {
   display: flex;
   gap: 0.6rem;
