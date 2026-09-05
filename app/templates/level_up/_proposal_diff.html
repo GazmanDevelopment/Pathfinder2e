@@ -75,5 +75,20 @@
     </ul>
   {% endif %}
 
+  {% if proposal.new_notes %}
+    <h3>New Notes</h3>
+    <ul class="item-list">
+      {% for note in proposal.new_notes %}
+        <li class="item-row item-row--card">
+          <label class="item-summary">
+            <input type="checkbox" name="accept_note" value="{{ loop.index0 }}" checked>
+            <strong>{{ note.title if note.title else "Note" }}</strong>
+          </label>
+          <div class="item-effect">{{ note.body | rich_text }}</div>
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
   <button type="submit" class="btn btn--primary">Apply accepted changes</button>
 </form>

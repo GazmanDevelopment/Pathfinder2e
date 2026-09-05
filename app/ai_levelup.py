@@ -10,7 +10,7 @@ safe to show the user directly, and a hard rule against fabricating anything
 not confidently derivable (never propose attack_bonus — it depends on the
 wielder's own stats, not the item/spell itself).
 
-Proposals only ever add brand-new Spell/Equipment/Feature rows — never
+Proposals only ever add brand-new Spell/Equipment/Feature/Note rows — never
 modify or remove anything that already exists on the sheet — matching this
 app's existing "copy, don't link" precedent (reference-library prefill,
 Pathbuilder import both only ever add new rows).
@@ -37,10 +37,11 @@ from sqlalchemy.orm import Session
 
 from app.config import AI_LEVELUP_PROVIDER, ANTHROPIC_API_KEY, OLLAMA_BASE_URL, OLLAMA_MODEL
 from app.models import Character, Equipment, Feature, LevelUpSession, Note, Proficiency, Spell
+from app.templating import clean_rich_text
 
 logger = logging.getLogger("app")
 
-ANTHROPIC_MODEL = "claude-opus-5"
+ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
 
 
 class AiLevelUpError(Exception):
@@ -124,12 +125,24 @@ class ProposedFeature(BaseModel):
     level_gained: int | None = None
 
 
+class ProposedNote(BaseModel):
+    """A brand-new Note to add — e.g. a quick combat reference for the
+    character's current abilities, only proposed when it's clearly useful
+    or the player asked for one. `body` goes through this app's normal
+    rich-text sanitizer before saving (same as every other Note), so only
+    <strong>/plain newlines survive — see SYSTEM_INSTRUCTIONS."""
+
+    title: str | None = None
+    body: str
+
+
 class LevelUpProposal(BaseModel):
     summary: str
     character_updates: ProposedCharacterUpdates = ProposedCharacterUpdates()
     new_spells: list[ProposedSpell] = []
     new_equipment: list[ProposedEquipment] = []
     new_features: list[ProposedFeature] = []
+    new_notes: list[ProposedNote] = []
 
 
 class LevelUpTurn(BaseModel):
@@ -206,12 +219,18 @@ tabletop character. You will see the character's full current sheet as JSON, fol
 player's free-text note about what happened (new level, DM-granted items, feat choices, etc.).
 
 Rules:
-- Propose only NEW rows to add (spells/equipment/features) — never modify or remove anything
-  that already exists on the sheet. The player's existing rows are read-only context for judging
-  what's already known/owned, not something you can edit or delete.
+- Propose only NEW rows to add (spells/equipment/features/notes) — never modify or remove
+  anything that already exists on the sheet. The player's existing rows are read-only context
+  for judging what's already known/owned, not something you can edit or delete.
 - Never invent a numeric attack_bonus for a new spell or equipment row — that depends on the
   wielder's own proficiency/ability modifiers, which you don't have precise enough context to
   compute reliably. Leave it out entirely.
+- You may propose a new_notes entry when it's clearly useful (e.g. a quick combat reference
+  summarizing strong action combos for the character's current spells/abilities) or the player
+  explicitly asks for one — don't add one for every level-up unprompted. A note's `body` is
+  plain text with real newlines for line breaks, except you may use <strong>...</strong> around
+  short phrases for emphasis — no other HTML tags, no markdown (no #, *, -, etc.), since only
+  <strong> and newlines survive this app's sanitizer and anything else is silently stripped.
 - Only set a Character field (level, hp_max, ac, class_dc, spell_dc, spell_atk, perception,
   ability scores) when you are proposing an actual change to it — leave everything else
   null/absent. Ability modifiers aren't part of this schema; they're derived automatically
@@ -467,6 +486,7 @@ def archive_and_apply(
     accept_spell_indices: list[int],
     accept_equipment_indices: list[int],
     accept_feature_indices: list[int],
+    accept_note_indices: list[int],
     session: LevelUpSession,
     db: Session,
 ) -> None:
@@ -541,5 +561,13 @@ def archive_and_apply(
                 level_gained=p.level_gained, sort_order=next_feature_order,
             ))
             next_feature_order += 1
+
+    for idx in accept_note_indices:
+        if 0 <= idx < len(proposal.new_notes):
+            p = proposal.new_notes[idx]
+            # Sanitized the same way every other Note is on save (see
+            # app/routers/notes.py) — a proposal's body is trusted no more
+            # than anything else that ends up in this field.
+            db.add(Note(character_id=character.id, title=p.title, body=clean_rich_text(p.body)))
 
     db.delete(session)

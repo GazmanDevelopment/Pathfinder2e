@@ -132,13 +132,15 @@ def apply_level_up(
     accept_spell: list[int] = Form([]),
     accept_equipment: list[int] = Form([]),
     accept_feature: list[int] = Form([]),
+    accept_note: list[int] = Form([]),
 ):
     session = _get_session(character_id, db)
     if session is None or session.latest_proposal_json is None:
         raise HTTPException(status_code=404, detail="Nothing to apply.")
     proposal = LevelUpProposal.model_validate_json(session.latest_proposal_json)
     archive_and_apply(
-        character, proposal, accept_field, accept_spell, accept_equipment, accept_feature, session, db
+        character, proposal, accept_field, accept_spell, accept_equipment, accept_feature,
+        accept_note, session, db,
     )
     db.commit()
     return RedirectResponse(url=f"/characters/{character_id}", status_code=303)
