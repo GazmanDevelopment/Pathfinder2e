@@ -353,7 +353,6 @@ def _call_anthropic(character: Character, history: list[dict]) -> str:
             max_tokens=8000,
             system=build_system_blocks(character),
             messages=history,
-            output_config={"effort": "high"},
         )
     except anthropic.RateLimitError as exc:
         raise AiLevelUpError("Claude is rate-limited right now — wait a moment and try again.") from exc
