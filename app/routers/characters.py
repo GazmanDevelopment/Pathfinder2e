@@ -2,6 +2,7 @@ import json
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse, Response
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.config import ai_levelup_configured
@@ -16,7 +17,9 @@ router = APIRouter(prefix="/characters", tags=["characters"])
 
 
 @router.get("")
-def list_characters(request: Request, owner_id: int | None = None, db: Session = Depends(get_db)):
+def list_characters(
+    request: Request, owner_id: int | None = None, q: str | None = None, db: Session = Depends(get_db)
+):
     user = request.session["user"]
     is_admin = user["role"] == "admin"
     # Archives (Phase 8) are ordinary characters rows kept only as read-only
@@ -39,6 +42,20 @@ def list_characters(request: Request, owner_id: int | None = None, db: Session =
         # Default admin view: a disabled user's characters aren't deleted or
         # reassigned, just filtered out here — same as Phase 4b's users list.
         query = query.join(User, Character.user_id == User.id).filter(User.is_disabled.is_(False))
+        if q and q.strip():
+            # Issue #35: one combined search across both the character's own
+            # name and its owner's name/email — this is the one view where
+            # an admin browses every character across every player at once,
+            # so a single box covering both fields is more useful than
+            # separate searches split across two pages.
+            pattern = f"%{q.strip()}%"
+            query = query.filter(
+                or_(
+                    Character.name.ilike(pattern),
+                    User.display_name.ilike(pattern),
+                    User.email.ilike(pattern),
+                )
+            )
 
     characters = query.all()
     return templates.TemplateResponse(
@@ -48,6 +65,7 @@ def list_characters(request: Request, owner_id: int | None = None, db: Session =
             "characters": characters,
             "is_admin_view": is_admin and viewing_owner is None,
             "viewing_owner": viewing_owner,
+            "q": q or "",
         },
     )
 
@@ -89,6 +107,7 @@ def import_pathbuilder(request: Request, build_id: str = Form(...), db: Session 
                 "is_admin_view": is_admin,
                 "viewing_owner": None,
                 "import_error": str(exc),
+                "q": "",
             },
         )
 
