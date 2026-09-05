@@ -34,8 +34,16 @@
         {% endif %}
       </span>
     {% endif %}
-    {% if spell.attack_bonus is not none %}<span class="tag">Atk {{ "%+d"|format(spell.attack_bonus) }}</span>{% endif %}
-    {% if spell.damage_formula %}<span class="tag">Dmg {{ spell.damage_formula }}</span>{% endif %}
+    {% if spell.attack_bonus is not none %}
+      <button type="button" class="tag roll-trigger" data-roll="attack"
+              data-roll-mod="{{ spell.attack_bonus }}" data-roll-label="{{ spell.name }}"
+              >Atk {{ "%+d"|format(spell.attack_bonus) }}</button>
+    {% endif %}
+    {% if spell.damage_formula %}
+      <button type="button" class="tag roll-trigger" data-roll="damage"
+              data-roll-formula="{{ spell.damage_formula }}" data-roll-label="{{ spell.name }}"
+              >Dmg {{ spell.damage_formula }}</button>
+    {% endif %}
     {% if spell.flags %}<span class="tag">{{ spell.flags }}</span>{% endif %}
   </div>
   {% if spell.effect %}<p class="item-effect ql-editor">{{ spell.effect | rich_text }}</p>{% endif %}
