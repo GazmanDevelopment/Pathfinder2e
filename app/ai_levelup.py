@@ -306,19 +306,38 @@ JSON_RETRY_INSTRUCTION = (
 )
 
 
-def _parse_turn(assistant_text: str) -> LevelUpTurn:
+def _strip_json_fence(text: str) -> str:
     """Strips a markdown code fence if the model wrapped its JSON in one
     despite being told not to (a common habit neither provider is immune
-    to now that neither uses grammar-constrained generation), then
-    validates. Raises pydantic.ValidationError on anything unparseable —
-    callers use that to trigger the one-retry-then-give-up pattern."""
-    text = assistant_text.strip()
+    to now that neither uses grammar-constrained generation)."""
+    text = text.strip()
     if text.startswith("```"):
         text = text.split("\n", 1)[1] if "\n" in text else text
         if text.endswith("```"):
             text = text.rsplit("```", 1)[0]
         text = text.strip()
-    return LevelUpTurn.model_validate_json(text)
+    return text
+
+
+def _parse_turn(assistant_text: str) -> LevelUpTurn:
+    """Validates a raw assistant reply as a LevelUpTurn. Raises
+    pydantic.ValidationError on anything unparseable — callers use that to
+    trigger the one-retry-then-give-up pattern."""
+    return LevelUpTurn.model_validate_json(_strip_json_fence(assistant_text))
+
+
+def extract_display_message(content: str) -> str:
+    """Pulls just the chat-visible `message` text out of one stored
+    assistant turn's raw structured-output JSON, for transcript display
+    only — the raw stored content (fence and all) is still what's replayed
+    back to the model as conversation history unchanged. Tolerates the same
+    markdown-fence wrapping _parse_turn does; falls back to the raw content
+    if it isn't parseable JSON at all (e.g. very old rows predating this
+    format, or a genuinely malformed reply)."""
+    try:
+        return json.loads(_strip_json_fence(content)).get("message", content)
+    except (json.JSONDecodeError, AttributeError):
+        return content
 
 
 def send_turn(character: Character, session: LevelUpSession, user_message: str) -> LevelUpTurn:

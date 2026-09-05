@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
-from app.ai_levelup import AiLevelUpError, LevelUpProposal, archive_and_apply, send_turn
+from app.ai_levelup import AiLevelUpError, LevelUpProposal, archive_and_apply, extract_display_message, send_turn
 from app.db import get_db
 from app.deps import require_ai_levelup_access
 from app.models import Character, LevelUpSession
@@ -36,11 +36,9 @@ def _transcript_context(
     if session is not None:
         for msg in json.loads(session.messages_json):
             if msg["role"] == "assistant":
-                try:
-                    text = json.loads(msg["content"]).get("message", msg["content"])
-                except (json.JSONDecodeError, AttributeError):
-                    text = msg["content"]
-                display_messages.append({"role": "assistant", "content": text})
+                display_messages.append(
+                    {"role": "assistant", "content": extract_display_message(msg["content"])}
+                )
             else:
                 display_messages.append(msg)
         if session.latest_proposal_json:
