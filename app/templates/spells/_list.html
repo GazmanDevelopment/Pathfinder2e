@@ -2,9 +2,6 @@
 <details class="sheet-section">
   <summary><h2>Spells</h2></summary>
   <ul id="spell-list" class="item-list">
-    {% for spell in character.spells %}
-      {% include "spells/_row.html" %}
-    {% endfor %}
-    {% include "spells/_add_trigger.html" %}
+    {% include "spells/_list_items.html" %}
   </ul>
 </details>

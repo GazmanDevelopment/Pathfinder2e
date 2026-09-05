@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -20,6 +21,12 @@ def _get_or_404(character_id: int, item_id: int, db: Session) -> Equipment:
 
 def _int_or_none(value: str):
     return int(value) if value.strip() else None
+
+
+def _next_sort_order(character_id: int, db: Session) -> int:
+    """See spells.py's identical helper — same issue #48 pattern."""
+    max_order = db.query(func.max(Equipment.sort_order)).filter(Equipment.character_id == character_id).scalar()
+    return (max_order or 0) + 1
 
 
 def _get_reference_or_none(db: Session, reference_id: int | None) -> ReferenceLibrary | None:
@@ -107,7 +114,7 @@ def create_equipment(
     reference_id: str = Form(""),
     reference_version: str = Form(""),
 ):
-    item = Equipment(character_id=character_id, name=name)
+    item = Equipment(character_id=character_id, name=name, sort_order=_next_sort_order(character_id, db))
     _apply_form(
         item,
         name,
@@ -196,3 +203,27 @@ def delete_equipment(character_id: int, item_id: int, db: Session = Depends(get_
     db.delete(item)
     db.commit()
     return HTMLResponse("")
+
+
+@router.post("/{item_id}/move")
+def move_equipment(
+    request: Request,
+    character_id: int,
+    item_id: int,
+    character: Character = Depends(get_character_or_404),
+    db: Session = Depends(get_db),
+    direction: str = Form(...),
+):
+    """See spells.py's move_spell — same issue #48 pattern."""
+    items = character.equipment
+    idx = next((i for i, it in enumerate(items) if it.id == item_id), None)
+    if idx is None:
+        raise HTTPException(status_code=404, detail="Equipment item not found")
+    swap_idx = idx - 1 if direction == "up" else idx + 1 if direction == "down" else None
+    if swap_idx is not None and 0 <= swap_idx < len(items):
+        items[idx].sort_order, items[swap_idx].sort_order = items[swap_idx].sort_order, items[idx].sort_order
+        db.commit()
+    return templates.TemplateResponse(
+        "equipment/_list_items.html",
+        {"request": request, "character_id": character_id, "character": character},
+    )

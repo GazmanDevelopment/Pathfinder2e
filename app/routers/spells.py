@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, Form, HTTPException, Request
 from fastapi.responses import HTMLResponse
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -20,6 +21,13 @@ def _get_or_404(character_id: int, spell_id: int, db: Session) -> Spell:
 
 def _int_or_none(value: str):
     return int(value) if value.strip() else None
+
+
+def _next_sort_order(character_id: int, db: Session) -> int:
+    """Appends to the end of the current display order (issue #48) — one
+    past whatever the highest sort_order is for this character's spells."""
+    max_order = db.query(func.max(Spell.sort_order)).filter(Spell.character_id == character_id).scalar()
+    return (max_order or 0) + 1
 
 
 def _get_reference_or_none(db: Session, reference_id: int | None) -> ReferenceLibrary | None:
@@ -114,7 +122,7 @@ def create_spell(
     reference_id: str = Form(""),
     reference_version: str = Form(""),
 ):
-    spell = Spell(character_id=character_id, name=name)
+    spell = Spell(character_id=character_id, name=name, sort_order=_next_sort_order(character_id, db))
     _apply_form(
         spell,
         name,
@@ -234,3 +242,34 @@ def delete_spell(character_id: int, spell_id: int, db: Session = Depends(get_db)
     db.delete(spell)
     db.commit()
     return HTMLResponse("")
+
+
+@router.post("/{spell_id}/move")
+def move_spell(
+    request: Request,
+    character_id: int,
+    spell_id: int,
+    character: Character = Depends(get_character_or_404),
+    db: Session = Depends(get_db),
+    direction: str = Form(...),
+):
+    """Swaps this spell's sort_order with its neighbor in the current
+    display order (issue #48). "up"/"down" only; anything else, or
+    already being at that end of the list, is a no-op. Re-renders the
+    whole #spell-list, not just this row — reordering moves a row's
+    position, so (unlike Edit/Delete, which only change or remove a row
+    in place) a single-row swap can't relocate it, same reasoning as Pin
+    Notes (issue #46).
+    """
+    spells = character.spells
+    idx = next((i for i, s in enumerate(spells) if s.id == spell_id), None)
+    if idx is None:
+        raise HTTPException(status_code=404, detail="Spell not found")
+    swap_idx = idx - 1 if direction == "up" else idx + 1 if direction == "down" else None
+    if swap_idx is not None and 0 <= swap_idx < len(spells):
+        spells[idx].sort_order, spells[swap_idx].sort_order = spells[swap_idx].sort_order, spells[idx].sort_order
+        db.commit()
+    return templates.TemplateResponse(
+        "spells/_list_items.html",
+        {"request": request, "character_id": character_id, "character": character},
+    )

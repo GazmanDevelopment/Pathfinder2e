@@ -1,0 +1,6 @@
+{% for spell in character.spells %}
+  {% set is_first = loop.first %}
+  {% set is_last = loop.last %}
+  {% include "spells/_row.html" %}
+{% endfor %}
+{% include "spells/_add_trigger.html" %}

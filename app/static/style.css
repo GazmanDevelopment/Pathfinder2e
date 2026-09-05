@@ -576,6 +576,24 @@ a:hover {
   outline-offset: 2px;
 }
 
+/* Reorder up/down at the top/bottom of a list (issue #48) — nothing to do
+   there, so the button just goes inert rather than being hidden (hiding it
+   would shift the other button's position on every render). */
+.btn-step:disabled {
+  opacity: 0.35;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Move up/down (issue #48) — reuses .btn-step--small, same as the spell
+   uses counter, so it sits inline with Edit/Delete rather than its own
+   block. */
+.reorder-buttons {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin-right: 0.4rem;
+}
+
 /* --------------------------------------------------------------------------
    Forms
    -------------------------------------------------------------------------- */
