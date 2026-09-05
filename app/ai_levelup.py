@@ -26,6 +26,7 @@ rather than failing on the first malformed response.
 """
 
 import json
+import logging
 
 import anthropic
 import httpx
@@ -36,6 +37,8 @@ from sqlalchemy.orm import Session
 
 from app.config import AI_LEVELUP_PROVIDER, ANTHROPIC_API_KEY, OLLAMA_BASE_URL, OLLAMA_MODEL
 from app.models import Character, Equipment, Feature, LevelUpSession, Note, Proficiency, Spell
+
+logger = logging.getLogger("app")
 
 ANTHROPIC_MODEL = "claude-opus-5"
 
@@ -250,10 +253,26 @@ def send_turn(character: Character, session: LevelUpSession, user_message: str) 
     history = json.loads(session.messages_json)
     history.append({"role": "user", "content": user_message})
 
-    if AI_LEVELUP_PROVIDER == "ollama":
-        turn, assistant_text = _send_turn_ollama(character, history)
-    else:
-        turn, assistant_text = _send_turn_anthropic(character, history)
+    try:
+        if AI_LEVELUP_PROVIDER == "ollama":
+            turn, assistant_text = _send_turn_ollama(character, history)
+        else:
+            turn, assistant_text = _send_turn_anthropic(character, history)
+    except AiLevelUpError:
+        raise
+    except Exception:
+        # Anything neither provider path anticipated (e.g. a self-hosted
+        # Ollama/Open WebUI server responding in a shape this integration
+        # hasn't seen yet — unlike the Anthropic path, this one isn't
+        # verified against a real server). Logged in full here, since a
+        # raw exception message isn't necessarily safe to show a player,
+        # but this must never surface as an unhandled 500 — every /level-up
+        # route only knows how to render AiLevelUpError as an inline
+        # message in the transcript.
+        logger.exception("Unexpected error calling the %s AI level-up provider", AI_LEVELUP_PROVIDER)
+        raise AiLevelUpError(
+            "Something went wrong talking to the AI provider. The details have been logged."
+        ) from None
 
     history.append({"role": "assistant", "content": assistant_text})
     session.messages_json = json.dumps(history)
@@ -327,6 +346,12 @@ def _call_ollama(character: Character, history: list[dict]) -> str:
     try:
         return data["choices"][0]["message"]["content"]
     except (KeyError, IndexError, TypeError) as exc:
+        # Ollama/Open WebUI's exact response shape isn't verified against a
+        # real server (see the PR this shipped in) — this is the specific,
+        # anticipated "shape didn't match" case. logger.exception below
+        # (via the caller's broader net) still records the real `data` for
+        # diagnosis; this message alone stays generic since raw server
+        # payloads aren't necessarily safe to show a player verbatim.
         raise AiLevelUpError("The local AI server's response didn't look like a chat completion.") from exc
 
 
