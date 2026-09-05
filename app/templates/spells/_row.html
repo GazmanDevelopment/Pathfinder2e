@@ -16,6 +16,20 @@
     {% endif %}
     {% if spell.range %}<span class="tag">Range {{ spell.range }}</span>{% endif %}
     {% if spell.uses %}<span class="tag">Uses {{ spell.uses }}</span>{% endif %}
+    {% if spell.uses_max is not none %}
+      {# Tap-to-track remaining uses (issue #43) — mirrors the HP counter's
+         unclamped, record-what-happened style, just sized to sit inline
+         with the other tags instead of its own block. #}
+      <span class="uses-adjust">
+        <button type="button" class="btn-step btn-step--small" aria-label="Decrease {{ spell.name }} remaining uses by 1"
+                hx-post="/characters/{{ character_id }}/spells/{{ spell.id }}/uses/adjust" hx-vals='{"delta": -1}'
+                hx-target="#spell-row-{{ spell.id }}" hx-swap="outerHTML">&minus;</button>
+        <span class="tag uses-count">{{ spell.uses_current if spell.uses_current is not none else 0 }}/{{ spell.uses_max }}</span>
+        <button type="button" class="btn-step btn-step--small" aria-label="Increase {{ spell.name }} remaining uses by 1"
+                hx-post="/characters/{{ character_id }}/spells/{{ spell.id }}/uses/adjust" hx-vals='{"delta": 1}'
+                hx-target="#spell-row-{{ spell.id }}" hx-swap="outerHTML">+</button>
+      </span>
+    {% endif %}
     {% if spell.attack_bonus is not none %}<span class="tag">Atk {{ "%+d"|format(spell.attack_bonus) }}</span>{% endif %}
     {% if spell.damage_formula %}<span class="tag">Dmg {{ spell.damage_formula }}</span>{% endif %}
     {% if spell.flags %}<span class="tag">{{ spell.flags }}</span>{% endif %}

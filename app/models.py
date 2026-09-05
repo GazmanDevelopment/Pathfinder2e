@@ -120,6 +120,14 @@ class Spell(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     rank: Mapped[str | None] = mapped_column(String, nullable=True)
     uses: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Optional tap-to-track counter (issue #43), separate from the free-text
+    # `uses` field above (kept as-is for notes like "3/day" or "at will").
+    # Mirrors Character.hp_current/hp_max: unclamped (may go below 0 or
+    # above max — a record of what happened, not a rules engine), and only
+    # shown in the UI when uses_max is set. Existing databases need
+    # run_startup_migrations() to add these two columns.
+    uses_current: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    uses_max: Mapped[int | None] = mapped_column(Integer, nullable=True)
     action_cost: Mapped[str | None] = mapped_column(String, nullable=True)
     range: Mapped[str | None] = mapped_column(String, nullable=True)
     effect: Mapped[str | None] = mapped_column(Text, nullable=True)
