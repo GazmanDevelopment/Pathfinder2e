@@ -2,9 +2,6 @@
 <details class="sheet-section">
   <summary><h2>Equipment</h2></summary>
   <ul id="equipment-list" class="item-list">
-    {% for item in character.equipment %}
-      {% include "equipment/_row.html" %}
-    {% endfor %}
-    {% include "equipment/_add_trigger.html" %}
+    {% include "equipment/_list_items.html" %}
   </ul>
 </details>

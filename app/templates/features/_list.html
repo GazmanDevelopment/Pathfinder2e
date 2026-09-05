@@ -2,9 +2,6 @@
 <details class="sheet-section">
   <summary><h2>Ancestry / Order / Class Features</h2></summary>
   <ul id="feature-list" class="item-list">
-    {% for feature in character.features %}
-      {% include "features/_row.html" %}
-    {% endfor %}
-    {% include "features/_add_trigger.html" %}
+    {% include "features/_list_items.html" %}
   </ul>
 </details>

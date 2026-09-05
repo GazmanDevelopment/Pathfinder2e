@@ -1,0 +1,6 @@
+{% for item in character.equipment %}
+  {% set is_first = loop.first %}
+  {% set is_last = loop.last %}
+  {% include "equipment/_row.html" %}
+{% endfor %}
+{% include "equipment/_add_trigger.html" %}

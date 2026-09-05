@@ -59,6 +59,12 @@ def run_startup_migrations(engine):
                 conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN reference_id INTEGER")
             if "reference_version" not in cols:
                 conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN reference_version VARCHAR")
+            if "sort_order" not in cols:
+                # Backfill from each row's own id (issue #48) — preserves
+                # the prior creation-order display exactly, since that's
+                # what the old order_by="<Model>.id" was.
+                conn.exec_driver_sql(f"ALTER TABLE {table} ADD COLUMN sort_order INTEGER")
+                conn.exec_driver_sql(f"UPDATE {table} SET sort_order = id WHERE sort_order IS NULL")
         cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(spells)")}
         if "uses_current" not in cols:
             conn.exec_driver_sql("ALTER TABLE spells ADD COLUMN uses_current INTEGER")

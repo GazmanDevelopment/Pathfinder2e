@@ -44,6 +44,18 @@
     </div>
   {% endif %}
   <div class="item-actions">
+    {# Reordering (issue #48) moves this row's position, so — like Pin
+       Notes (#46) — it targets the whole #spell-list, not this row. #}
+    <span class="reorder-buttons">
+      <button type="button" class="btn-step btn-step--small" aria-label="Move {{ spell.name }} up"
+              {% if is_first %}disabled{% endif %}
+              hx-post="/characters/{{ character_id }}/spells/{{ spell.id }}/move" hx-vals='{"direction": "up"}'
+              hx-target="#spell-list" hx-swap="innerHTML">&uarr;</button>
+      <button type="button" class="btn-step btn-step--small" aria-label="Move {{ spell.name }} down"
+              {% if is_last %}disabled{% endif %}
+              hx-post="/characters/{{ character_id }}/spells/{{ spell.id }}/move" hx-vals='{"direction": "down"}'
+              hx-target="#spell-list" hx-swap="innerHTML">&darr;</button>
+    </span>
     <button type="button" class="btn btn--ghost" hx-get="/characters/{{ character_id }}/spells/{{ spell.id }}/edit"
             hx-target="#spell-row-{{ spell.id }}" hx-swap="outerHTML">Edit</button>
     <button type="button" class="btn btn--danger" hx-delete="/characters/{{ character_id }}/spells/{{ spell.id }}"

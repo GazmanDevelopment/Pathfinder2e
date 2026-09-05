@@ -1,0 +1,6 @@
+{% for feature in character.features %}
+  {% set is_first = loop.first %}
+  {% set is_last = loop.last %}
+  {% include "features/_row.html" %}
+{% endfor %}
+{% include "features/_add_trigger.html" %}

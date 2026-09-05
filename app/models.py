@@ -99,13 +99,22 @@ class Character(Base):
         order_by='Proficiency.name.collate("NOCASE")',
     )
     spells: Mapped[list["Spell"]] = relationship(
-        back_populates="character", cascade="all, delete-orphan", order_by="Spell.id"
+        back_populates="character",
+        cascade="all, delete-orphan",
+        # Manually reorderable (issue #48) via sort_order; id is only a
+        # tiebreaker for rows that happen to share one (shouldn't occur in
+        # practice, but costs nothing to guard against).
+        order_by="Spell.sort_order, Spell.id",
     )
     equipment: Mapped[list["Equipment"]] = relationship(
-        back_populates="character", cascade="all, delete-orphan", order_by="Equipment.id"
+        back_populates="character",
+        cascade="all, delete-orphan",
+        order_by="Equipment.sort_order, Equipment.id",
     )
     features: Mapped[list["Feature"]] = relationship(
-        back_populates="character", cascade="all, delete-orphan", order_by="Feature.id"
+        back_populates="character",
+        cascade="all, delete-orphan",
+        order_by="Feature.sort_order, Feature.id",
     )
     notes: Mapped[list["Note"]] = relationship(
         back_populates="character",
@@ -139,6 +148,16 @@ class Spell(Base):
         ForeignKey("characters.id", ondelete="CASCADE"), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(String, nullable=False)
+    # Manual display order (issue #48) — set at creation to one past the
+    # character's current max (append to the end), then swapped between
+    # adjacent rows by the move-up/move-down action. Nullable at the DB
+    # level (a single migration-time default can't give each existing row
+    # a distinct value), but always explicitly set by application code, so
+    # in practice it's never actually null. Existing databases need
+    # run_startup_migrations() to add this column and backfill it from
+    # each row's own id, which preserves the prior creation-order display
+    # exactly, since that's what the old `order_by="Spell.id"` was.
+    sort_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rank: Mapped[str | None] = mapped_column(String, nullable=True)
     uses: Mapped[str | None] = mapped_column(String, nullable=True)
     # Optional tap-to-track counter (issue #43), separate from the free-text
@@ -177,6 +196,8 @@ class Equipment(Base):
         ForeignKey("characters.id", ondelete="CASCADE"), nullable=False, index=True
     )
     name: Mapped[str] = mapped_column(String, nullable=False)
+    # See Spell.sort_order above — same issue #48 pattern.
+    sort_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     qty: Mapped[int | None] = mapped_column(Integer, nullable=True, default=1)
@@ -203,6 +224,8 @@ class Feature(Base):
     )
     source: Mapped[str | None] = mapped_column(String, nullable=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
+    # See Spell.sort_order above — same issue #48 pattern.
+    sort_order: Mapped[int | None] = mapped_column(Integer, nullable=True)
     effect: Mapped[str | None] = mapped_column(Text, nullable=True)
     level_gained: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # See Spell.reference_id/reference_version above — same Phase 7 pattern.
