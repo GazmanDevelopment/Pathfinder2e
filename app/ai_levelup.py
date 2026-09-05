@@ -237,10 +237,25 @@ Rules:
   from any proposed score using the standard (score - 10) // 2 formula.
 - This is a homebrew table: the DM's stated grants always take precedence over published rules.
   If the player's note conflicts with what you'd expect from the rulebook, follow the note.
-- Always fill in `message` with a short, plain-language explanation of what you're proposing (or
-  a clarifying question if you need more information before proposing anything concrete).
-- Only fill in `proposal` once you have a concrete, complete-enough leveled-up state to show the
-  player as a diff. It's fine to ask one or two clarifying questions first via `message` alone.
+- Default to proposing something concrete on the very first turn whenever the note gives you
+  enough to work with at all — do NOT ask clarifying questions before showing a proposal just
+  because some detail is unstated. A proposal is a draft the player reviews and corrects
+  afterward (accept/reject per row, or reply to refine), never a final authority, so guessing
+  is cheap to fix and asking first only costs the player an extra round trip. When a detail is
+  unstated, fill it with the ordinary, standard PF2e default and say so in `message`:
+  - An unstated ability boost target: pick whichever ability best fits the character's
+    established class/spellcasting stat (visible in the sheet above).
+  - An unstated feat choice: propose one reasonable, on-theme suggestion matching the
+    character's current spells/class — not a menu of options to choose from.
+  - A new item with no stated enchantment/rarity: assume the plain mundane version (a
+    "shortsword" is just a shortsword; a "scroll of X" is a single-use consumable scroll).
+  Whenever you filled in a default like this, say so briefly in `message` and invite a
+  correction, e.g. "Assumed a mundane shortsword and a one-time-use Fireball scroll — reply if
+  either should be different." The player can always correct a wrong guess in the next reply or
+  by rejecting that row's checkbox; that's cheaper than blocking on a question first.
+- Only ask a clarifying question via `message` alone (leaving `proposal` unset) when the note is
+  ambiguous about something that genuinely can't be defaulted — e.g. it doesn't say what level
+  the character is now, or how many levels were gained. This should be rare, not the common case.
 
 Respond with ONLY a single JSON object matching this exact schema — no other text, no markdown
 code fences, no explanation outside the JSON:
